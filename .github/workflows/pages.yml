@@ -23,6 +23,12 @@ jobs:
 
       - name: Change base-tag
         run: sed -i 's/<base href="\/" \/>/<base href="\/MiniC\/" \/>/g' C.Web/wwwroot/index.html
+        
+      - name: Restore Packages
+        env: 
+          GITHUB_USERNAME: qkmaxware
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dotnet restore --configfile nuget.config
 
       - name: Build Site
         env: 

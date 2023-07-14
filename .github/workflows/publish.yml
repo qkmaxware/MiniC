@@ -36,7 +36,7 @@ jobs:
       env:
         GITHUB_USERNAME: qkmaxware
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: dotnet publish c.Compiler --self-contained --configuration Release -r win-x64 -o .exe/win
+      run: dotnet publish C.Compiler --self-contained --configuration Release -r win-x64 -o .exe/win
     - name: Compress Windows Executable
       uses: montudor/action-zip@v1
       with:
@@ -45,7 +45,7 @@ jobs:
       env:
         GITHUB_USERNAME: qkmaxware
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: dotnet publish c.Compiler --self-contained --configuration Release -r linux-x64 -o .exe/linux
+      run: dotnet publish C.Compiler --self-contained --configuration Release -r linux-x64 -o .exe/linux
     - name: Compress Linux Executable
       uses: montudor/action-zip@v1
       with:
@@ -54,7 +54,7 @@ jobs:
       env:
         GITHUB_USERNAME: qkmaxware
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: dotnet publish c.Compiler --self-contained --configuration Release -r osx-x64 -o .exe/osx
+      run: dotnet publish C.Compiler --self-contained --configuration Release -r osx-x64 -o .exe/osx
     - name: Compress OSX Executable
       uses: montudor/action-zip@v1
       with:
