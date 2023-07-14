@@ -1,0 +1,84 @@
+name: Publish Packages
+on:
+  release: 
+    types:
+    - released
+    branches: 
+    - "root"
+jobs:
+  publish:
+    name: Publish
+    runs-on: ${{ matrix.os }}
+    permissions:
+      packages: write
+      contents: write
+    strategy: 
+      fail-fast: false
+      matrix: 
+        os: [ ubuntu-latest ]
+        dotnet: [ '7.0.x' ]
+    steps:
+    # Init
+    - name: Checkout Code
+      uses: actions/checkout@master
+    - name: Setup .NET Core - ${{ matrix.dotnet }}@${{ matrix.os }}
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '${{ matrix.dotnet }}'
+    - name: Restore Packages
+      env: 
+        GITHUB_USERNAME: qkmaxware
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet restore
+    
+    # Create Standalone EXEs
+    - name: Create Windows Executable
+      env:
+        GITHUB_USERNAME: qkmaxware
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet publish c.Compiler --self-contained --configuration Release -r win-x64 -o .exe/win
+    - name: Compress Windows Executable
+      uses: montudor/action-zip@v1
+      with:
+        args: zip -qq -r .exe/minic.win-x64.zip .exe/win
+    - name: Create Linux Executable
+      env:
+        GITHUB_USERNAME: qkmaxware
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet publish c.Compiler --self-contained --configuration Release -r linux-x64 -o .exe/linux
+    - name: Compress Linux Executable
+      uses: montudor/action-zip@v1
+      with:
+        args: zip -qq -r .exe/minic.linux-x64.zip .exe/linux
+    - name: Create OSX Executable
+      env:
+        GITHUB_USERNAME: qkmaxware
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet publish c.Compiler --self-contained --configuration Release -r osx-x64 -o .exe/osx
+    - name: Compress OSX Executable
+      uses: montudor/action-zip@v1
+      with:
+        args: zip -qq -r .exe/minic.osx-x64.zip .exe/osx
+    
+    - name: Upload Executables
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref }}
+        file: .exe/*.zip
+        file_glob: true
+        overwrite: true
+
+    # Create Nuget Packages
+    - name: Pack Nuget Package
+      env:
+        # Work around https://github.com/actions/setup-dotnet/issues/29
+        DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+      run: |
+        dotnet pack C --configuration Release --output .release
+    - name: Publish Nuget Package
+      env:
+        # Work around https://github.com/actions/setup-dotnet/issues/29
+        DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet nuget push ".release/*.nupkg" --source "https://nuget.pkg.github.com/qkmaxware/index.json" --skip-duplicate --api-key ${GITHUB_TOKEN}

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Qkmaxware.languages.C.Web</title>
+    <base href="/" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="C.Web.styles.css" rel="stylesheet" />
+    <link href="lib/codemirror/codemirror.css" rel="stylesheet" />
+    <link href="lib/codemirror/theme.material-darker.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="lib/codemirror/codemirror.js" type="text/javascript" charset="utf-8"></script>
+    <script src="lib/codemirror/addons.simple.js" type="text/javascript" charset="utf-8"></script>
+    <script>
+        function initEditor(el) {
+            CodeMirror.defineSimpleMode(
+                "minic",
+                {
+                    // https://codemirror.net/5/demo/simplemode.html
+                    start: [
+                        { regex: /#[^\n]*/, token: "meta" },
+                        { regex: /\b(?:void|int|uint|float|char|bool|new|len|sizeof|free|if|while|else|return|break|continue)\b/, token: "keyword" },
+                        { regex: /\b(?:true|false)\b/, token: "atom" },
+                        //{ regex: /[a-zA-Z][a-zA-Z0-9$_]*/, token: "variable" },
+                        { regex: /0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?(u|f)?/i, token: "number" },
+                        { regex: /\/\/.*/, token: "comment" },
+                        { regex: /"(?:[^\\]|\\.)*?(?:"|$)/, token: "string" },
+                    ],
+                    meta: {
+                        dontIndentStates: ["comment"],
+                        lineComment: "//"
+                    }
+                }
+            );
+            var CodeEditor = CodeMirror.fromTextArea(
+                document.getElementById(el),
+                {
+                    lineNumbers: true,
+                    styleActiveLine: true,
+                    matchBrackets: true,
+                    theme: "material-darker",
+                    mode: "minic"
+                }
+            );
+            CodeEditor.setSize("100%", "100%");
+            window.editor = CodeEditor;
+        }
+        function editorValue() {
+            return window.editor.getValue();
+        }
+        function setEditorValue(content) {
+            return window.editor.setValue(content);
+        }
+        async function downloadFileFromStream (fileName, contentStreamReference) {
+            const arrayBuffer = await contentStreamReference.arrayBuffer();
+            const blob = new Blob([arrayBuffer]);
+            const url = URL.createObjectURL(blob);
+            const anchorElement = document.createElement('a');
+            anchorElement.href = url;
+            anchorElement.download = fileName ?? '';
+            anchorElement.click();
+            anchorElement.remove();
+            URL.revokeObjectURL(url);
+        }
+        function allStorage() {
+            var archive = [];
+            for (var i = 0; i< window.localStorage.length; i++) {
+                archive.push(localStorage.key(i));
+            }
+            return archive;
+        }
+    </script>
+</body>
+
+</html>

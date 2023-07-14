@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Qkmaxware.Languages.MiniC</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Colin</Authors>
+    <PackageTags>compiler</PackageTags>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/qkmaxware/MiniC.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE.md" CopyToOutputDirectory="Always" Pack="true" PackagePath="$(PackageLicenseFile)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Qkmaxware.Vm " Version="*" />
+    <EmbeddedResource Include="src/StandardLibrary/*.h"/>
+  </ItemGroup>
+
+</Project>

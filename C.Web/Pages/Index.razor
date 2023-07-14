@@ -1,0 +1,326 @@
+﻿@page "/"
+@using System.Text;
+@using Qkmaxware.Vm;
+@using Qkmaxware.Vm.Assembly;
+@using Qkmaxware.Languages.C;
+@using Qkmaxware.Languages.C.Text;
+@using System.Reflection;
+@inject IJSRuntime js;
+
+<PageTitle>Index</PageTitle>
+
+<div id="editor-container">
+    <textarea id="editor" name="editor" @ref="editor">#include &lt;console.h&gt;
+
+int main() {
+    char[] str = "Hello World";
+    print_str(str);
+    free(str);
+    return 0;
+}</textarea>
+</div>
+
+<div id="actions">
+    <div id="action-bar">
+        <button @onclick=beginSave title="Save code"><i class="fa fa-save"></i></button>
+        <button @onclick=beginLoad title="Load code"><i class="fa fa-folder-open"></i></button>
+        <button @onclick=help title="Show help window"><i class="fa fa-info-circle"></i></button>
+        <button @onclick=download title="Download bytecode"><i class="fa fa-download"></i></button>
+        <button @onclick=stdin title="Settings"><i class="fa  fa-gears"></i></button>
+        <button @onclick=buildAndRun title="Run"><i class="fa fa-play"></i></button>
+    </div>
+    <div>
+        @foreach (var notification in this.notifications) {
+            <div class="notice @notification.Level">
+                <span style="float: right">@notification.Created.ToLongTimeString()</span>
+                <div style="margin-left: 16px; margin-top: 8px;">
+                    @notification.Message 
+                </div>
+                <div style="text-align: right">
+                    <button style="font-size: small; color: inherit;" @onclick=@(() => notifications.Remove(notification))>clear</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+<div id="terminal">
+    <div class="bar">
+        <pre>OUTPUT</pre>
+        <button @onclick=@(() => console?.Clear())>&times;</button>
+    </div>
+    <pre class=output>
+        <code>@console.ToString()</code>
+    </pre>
+    <div class="attribution">
+        Powered by <a href="https://codemirror.net/" target="_blank"><img src="https://codemirror.net/style/logo.svg" style="width: 1em">Code Mirror</a>
+    </div>
+</div>
+
+<div class="modal" style="display: @(showStdin? "block" : "none");">
+    <div class="modal-content">
+        <header>
+            Settings
+            <button style="float: right;" @onclick=closeStdin>&times;</button>
+        </header>
+        <div style="text-align: center">
+            <h3>Standard Input Text</h3>
+            <textarea @bind=stdinText></textarea>
+        </div>
+        <footer></footer>
+    </div>
+</div>
+
+<div class="modal" style="display: @(showSave? "block" : "none");">
+    <div class="modal-content">
+        <header>
+            Save
+            <button style="float: right;" @onclick=closeSave>&times;</button>
+        </header>
+        <div style="text-align: center">
+            <input @bind=saveName placeholder="file name">
+            <button @onclick=saveNow>Save and Close</button>
+        </div>
+        <footer></footer>
+    </div>
+</div>
+
+<div class="modal" style="display: @(showLoad? "block" : "none");">
+    <div class="modal-content">
+        <header>
+            Load
+            <button style="float: right;" @onclick=closeLoad>&times;</button>
+        </header>
+        <div>
+            <div style="text-align: center;">Select a saved program from the list below</div>
+            <hr>
+            @foreach (var entry in this.builtins) {
+                <button style="width: 100%;" @onclick=@(() => loadContent(entry.Value))>@entry.Key</button>
+            }
+            @if (this.saves != null) {
+                foreach(var save in saves) {
+                    <button style="width: 100%;" @onclick=@(() => loadNow(save))>@save</button>
+                }
+            }
+        </div>
+        <footer></footer>
+    </div>
+</div>
+
+<div class="modal" style="display: @(showHelp? "block" : "none");">
+    <div class="modal-content">
+        <header>
+            Help
+            <button style="float: right;" @onclick=closeHelp>&times;</button>
+        </header>
+        <div class="row">
+            <nav>
+                @foreach (var group in this.helpDocs) {
+                    <div id="help-@group.Key.GroupName">
+                        <span>@group.Key.GroupName</span>
+                    @foreach (var document in group.Value) {
+                        var self = document;
+                        <button style="font-size: medium; display: block; width: 100%;" @onclick=@(() => helpContent = self.MarkdownContent)>@self.Name</button>
+                    }
+                    </div>
+                }
+            </nav>
+            @if (helpContent != null) {
+                <div id=article>@((MarkupString)helpContent)</div>
+            }
+        </div>
+        <footer></footer>
+    </div>
+</div>
+
+@code {
+
+    private Dictionary<Group, List<Document>> helpDocs = 
+        Document
+        .Load()
+        .Append(new Docs.StandardLibraryDoc())
+        .GroupBy(doc => doc.Group)
+        .ToDictionary(
+            (group) => group.Key,
+            (group) => group.ToList()
+        );
+    private string? helpContent;
+
+    private ElementReference? editor;
+
+    private List<Notification> notifications = new List<Notification>();
+
+    private bool showHelp;
+
+    private StringBuilder console = new StringBuilder();
+
+    protected override void OnAfterRender(bool first) {
+        if (first) {
+            js.InvokeVoidAsync("initEditor", "editor");
+        }
+    }
+
+    private bool showSave;
+    private string? saveName;
+    private void beginSave() {
+        showSave = true;
+    }
+    private async Task saveNow() {
+        var name = saveName;
+        if (!string.IsNullOrEmpty(name)) {
+            var program = await js.InvokeAsync<string>("editorValue");
+            await js.InvokeVoidAsync("window.localStorage.setItem", "qkasm." + name, program);
+            closeSave();
+        }
+    }
+    private void closeSave() {
+        showSave = false;
+    }
+
+    private Dictionary<string, string> builtins = new Dictionary<string, string>{
+        {"Hello World", @"#include <console>
+
+int main() {
+    char[] str = ""Hello World"";
+    print_str(str);
+    free(str);
+    return 0;
+}"},
+    };
+    private bool showLoad;
+    private List<string>? saves;
+    private async Task beginLoad() {
+        saves = await listSaves();
+        showLoad = true;
+    }
+    private async Task<List<string>> listSaves() {
+        var storage = await js.InvokeAsync<string[]>("allStorage");
+        return storage
+            .Where(entry => entry.StartsWith("qkasm."))
+            .Select(entry => entry.Substring("qkasm.".Length))
+            .ToList();
+    }
+    private async Task loadContent(string content) {
+        await js.InvokeVoidAsync("setEditorValue", content);
+        closeLoad();
+    }
+    private async Task loadNow(string name) {
+        var content = await js.InvokeAsync<string>("window.localStorage.getItem", "qkasm." + name);
+        await js.InvokeVoidAsync("setEditorValue", content);
+        closeLoad();
+    }
+    private void closeLoad() {
+        showLoad = false;
+    }
+
+    private void help() {
+        showHelp = true;
+    }
+    private void closeHelp() {
+        showHelp = false;
+    }
+
+    private async Task<Result<Qkmaxware.Vm.Module>> compile() {
+        try{
+            var program = await js.InvokeAsync<string>("editorValue");
+
+            var fs = new FileSystem(
+                libs: Qkmaxware.Languages.C.StandardLib.LibraryLoader.Load(), 
+                root: new VirtualDirectory("src")
+            );
+            var file = new VirtualFile("main.c", program);
+            ((VirtualDirectory)fs.RootPath).Add(file);
+            
+            var preprocessor = new TextPreprocessor(new PreprocessorTextReader(file), fs);
+            var lexer = new Lexer();
+            var parser = new Parser();
+
+            var tokens = lexer.Tokenize(preprocessor);
+            var unit = parser.Parse(tokens);
+            unit.Validate();
+
+            var emitter = new CToBytecode();
+            return new Result<Qkmaxware.Vm.Module>(emitter.Convert(unit));
+        } catch (Exception e) {
+            return new Result<Qkmaxware.Vm.Module>(e);
+        }
+    }
+
+    private async Task download() {
+        try {
+            console.Clear();
+            var result = await compile();
+            Qkmaxware.Vm.Module? module;
+            if (result.TryUnwrap(out module)) {
+
+                using (var stream = new MemoryStream()) {
+                    var writer = new BinaryWriter(stream);
+                    module.EncodeFile(writer);
+
+                    writer.Flush();
+                    stream.Position = 0;
+
+                    await js.InvokeVoidAsync("downloadFileFromStream", "main.qkbc", new DotNetStreamReference(stream: stream));
+                    writer.Dispose();
+                }
+            } else {
+                Exception? e2;
+                if (result.TryUnwrapException(out e2)) {
+                    console.AppendLine(DateTime.Now + "> ");
+                    if (e2 is IPrettyPrint pretty) {
+                        console.Append(pretty.PrettyPrint());
+                    } else {
+                        console.Append(e2.ToString());
+                    }
+                    console.AppendLine();
+                }
+            }
+        } catch (Exception e) {
+            notifications.Add(new Notification(NotificationLevel.Error, e.Message));
+        }
+    }
+
+    private bool showStdin;
+    private string? stdinText = "Foo Bar Baz";
+    public void stdin() {
+        showStdin = true;
+    }
+    public void closeStdin() {
+        showStdin = false;
+    }
+
+    private async Task buildAndRun() {
+        try {
+            console.Clear();
+            var result = await compile();
+            Qkmaxware.Vm.Module? module;
+            if (result.TryUnwrap(out module)) {
+                var sb = new StringBuilder();
+                var host = new HostInterface(
+                    stdin: new StringReader(this.stdinText ?? string.Empty),
+                    stdout: new StringWriter(sb)
+                );
+                var vm = new Machine(host);
+                var thread = vm.LoadProgram(module);
+
+                await InvokeAsync(StateHasChanged);
+                thread.RunUntilComplete();
+
+                console.AppendLine(DateTime.Now + "> ");
+                console.AppendLine(sb.ToString());
+            } else {
+                Exception? e2;
+                if (result.TryUnwrapException(out e2)) {
+                    console.AppendLine(DateTime.Now + "> ");
+                    if (e2 is IPrettyPrint pretty) {
+                        console.Append(pretty.PrettyPrint());
+                    } else {
+                        console.Append(e2);
+                    }
+                    console.AppendLine();
+                }
+            }
+        } catch (Exception e) {
+            notifications.Add(new Notification(NotificationLevel.Error, e.Message));
+        }
+    }
+}
