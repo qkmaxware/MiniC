@@ -8,6 +8,7 @@ jobs:
     name: Deploy Github Pages
     runs-on: ubuntu-latest
     permissions:
+      packages: read
       contents: write
     steps:
       - name: Checkout Code
@@ -23,7 +24,7 @@ jobs:
 
       - name: Change base-tag
         run: sed -i 's/<base href="\/" \/>/<base href="\/MiniC\/" \/>/g' C.Web/wwwroot/index.html
-        
+
       - name: Restore Packages
         env: 
           GITHUB_USERNAME: qkmaxware
