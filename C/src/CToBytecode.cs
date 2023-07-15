@@ -20,6 +20,8 @@ public class CToBytecode {
                 if (funcdef == unit.Main) {
                     main = l;
                 }
+            } else {
+                declaration.Visit(stmts);
             }
         }
         
@@ -31,19 +33,25 @@ public class CToBytecode {
     }
 
     private void writeHeader(ModuleBuilder builder, TranslationUnit unit, Label? mainLocation = null) {
-        if (!unit.IsExecutable || unit.Main == null || mainLocation == null) {
+        if (!unit.IsExecutable || unit.Main == null) {
             builder.Exit(0);
             return;
         }
 
         // Call the main method
-        builder.Call(mainLocation, 0);
+        if (mainLocation == null) {
+            builder.Call(0, 0); // No main method... yet. Just fill in a temp value for now.
+        } else {
+            builder.Call(mainLocation, 0);
+        }
         
         // Handle the return type
-        if (unit.Main.ReturnType != Void.Instance) {
+        //if (unit.Main.ReturnType != Void.Instance) {
             // If its got a return, remove it
-            builder.PopStackTop();
-        }
+            //builder.PopStackTop();
+        //}
+        // Remove the return value
+        builder.PopStackTop();
 
         // Finally exit
         builder.Exit(0);
@@ -58,14 +66,13 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     private Dictionary<FunctionDeclaration, Label> labels = new Dictionary<FunctionDeclaration, Label>();
     private Dictionary<FunctionDeclaration, List<Action<Label>>> function_label_thunks = new Dictionary<FunctionDeclaration, List<Action<Label>>>();
-    public void Accept(LocalVariableDeclaration decl)
-    {
+    public void Accept(LocalVariableDeclaration decl) {
         throw new NotImplementedException();
     }
 
-    public void Accept(StaticVariableDeclaration decl)
-    {
-        throw new NotImplementedException();
+    public void Accept(StaticVariableDeclaration decl) {
+        var @ref = builder.AddStatic(Operand.From(0));
+        decl.Tag(@ref);
     }
     public Label Visit(FunctionDeclaration decl) {
         Accept(decl);
@@ -92,6 +99,9 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         } 
         // Do body
         this.Accept(decl.Body);
+        
+        // Fallback return in case none was provided (in the case of void methods this is common)
+        Accept(new ReturnStatement());
     }
 
     private void labelOf(FunctionDeclaration decl, Action<Label> action) {
@@ -130,8 +140,9 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
                 // TODO 
                 // Load address to global
                 // Load the value to save
+                var index = global.StaticIndex;
                 stmt.Value.Visit(this);
-                throw new NotImplementedException();
+                builder.AddInstruction("store_static", Operand.From(global.StaticIndex));
                 break;
             default:
                 throw new NotImplementedException();
@@ -221,7 +232,8 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     public void Accept(ReturnStatement stmt) {
         // DONE
         if (stmt.ReturnedValue == null) {
-            builder.Return();
+            builder.PushInt32(0);
+            builder.ReturnResult();
         } else {
             stmt.ReturnedValue.Visit(this);
             builder.ReturnResult();
@@ -251,7 +263,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         loops.Push(data);
         stmt.Condition.Visit(this);
         
-        var condition_branch_anchor = builder.Anchor();
+        var condition_exit_anchor = builder.Anchor();
         builder.GotoIfStackTopZero(loop_start_anchor);
 
         // Loop body
@@ -261,7 +273,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         // Loop end (replace the failure branch to go to the end of the loop)
         var end_anchor = builder.Anchor();
         data.End = end_anchor;
-        builder.RewindStream(condition_branch_anchor);
+        builder.RewindStream(condition_exit_anchor);
         builder.GotoIfStackTopZero(end_anchor);
         builder.RewindStream(end_anchor);
 
@@ -315,9 +327,8 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
                     builder.PushLocal(local_index);
                     break;
                 case StaticVariableDeclaration global:
-                    // TODO 
-                    // Load address to global
-                    throw new NotImplementedException();
+                    var static_index = global.StaticIndex;
+                    builder.AddInstruction("load_static", Operand.From(static_index));
                     break;
                 default:
                     throw new NotImplementedException();
@@ -347,6 +358,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         // Put size on the stack
         expr.Size.Visit(this);
         builder.PushInt32(sizeOf(expr.Type.ElementType)); 
+        builder.MultiplyInt32(); // Size(bytes) = Size(elements) * Size(element_type)
         // Allocate
         builder.Allocate();
     }
@@ -768,11 +780,13 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(LengthExpression expr) {
         expr.Loader.Visit(this);
+        exprResultType = Integer.Instance;
         builder.ArrayLength();
     }
 
     public void Accept(SizeOfExpression expr) {
         expr.Loader.Visit(this);
+        exprResultType = Integer.Instance;
         builder.ObjectSize();
     }
     

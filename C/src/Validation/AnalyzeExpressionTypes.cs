@@ -23,13 +23,9 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
         }
     }
 
-    public void Accept(LocalVariableDeclaration decl) {
-        throw new NotImplementedException();
-    }
+    public void Accept(LocalVariableDeclaration decl) { }
 
-    public void Accept(StaticVariableDeclaration decl) {
-        throw new NotImplementedException();
-    }
+    public void Accept(StaticVariableDeclaration decl) { }
 
     public void Accept(FunctionDeclaration decl) {
         decl.Body.Visit(this);

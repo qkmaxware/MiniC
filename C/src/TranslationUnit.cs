@@ -5,21 +5,26 @@ namespace Qkmaxware.Languages.C;
 /// <summary>
 /// A single translation unit
 /// </summary>
-public class TranslationUnit : IEnumerable<InternalDeclaration> {
+public class TranslationUnit : IEnumerable<GlobalDeclaration> {
     /// <summary>
     /// Root namespace for the translation unit
     /// </summary>
     /// <returns>namespace</returns>
     public Namespace Namespace {get; private set;} = new Namespace();
 
-    private List<InternalDeclaration> declarations = new List<InternalDeclaration>();
+    private List<GlobalDeclaration> declarations = new List<GlobalDeclaration>();
+    private int static_pool_count = 0;
 
-    public IEnumerator<InternalDeclaration> GetEnumerator() => declarations.GetEnumerator();
+    public IEnumerator<GlobalDeclaration> GetEnumerator() => declarations.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => declarations.GetEnumerator();
 
-    public void AddDeclaration(InternalDeclaration declaration) {
+    public void AddDeclaration(GlobalDeclaration declaration) {
         if (declaration is FunctionDeclaration funcl && funcl.Name.Value == "main" && funcl.FormalArguments.Count == 0) {
             this.Main = funcl;
+        }
+        if (declaration is StaticVariableDeclaration vardecl) {
+            vardecl.StaticIndex = static_pool_count;
+            static_pool_count++;
         }
         this.declarations.Add(declaration);
     }

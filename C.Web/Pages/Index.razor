@@ -177,7 +177,7 @@ int main() {
     }
 
     private Dictionary<string, string> builtins = new Dictionary<string, string>{
-        {"Hello World", @"#include <console>
+        {"Hello World", @"#include <console.h>
 
 int main() {
     char[] str = ""Hello World"";
@@ -276,6 +276,8 @@ int main() {
             }
         } catch (Exception e) {
             notifications.Add(new Notification(NotificationLevel.Error, e.Message));
+            console.AppendLine(DateTime.Now + "> ");
+            console.AppendLine(e.ToString());
         }
     }
 
@@ -321,6 +323,8 @@ int main() {
             }
         } catch (Exception e) {
             notifications.Add(new Notification(NotificationLevel.Error, e.Message));
+            console.AppendLine(DateTime.Now + "> ");
+            console.AppendLine(e.ToString());
         }
     }
 }

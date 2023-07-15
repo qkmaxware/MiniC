@@ -21,7 +21,7 @@ public class Parser {
         // Parse ident
         var ident = parseIdentifier(stream);
         if (unit.Namespace.Exists(ident.Text)) {
-            throw new ParserException(ident.Source, ident.StartPosition, "Identifier '{ident.Text}' is already declared in this translation unit");
+            throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is already declared in this translation unit");
         }
         var name = new Name(unit.Namespace, ident.Text);
 
@@ -31,8 +31,12 @@ public class Parser {
             throw new EndOfStreamException();
         if (peek is Semicolon) {
             // Is a static variable
-            stream.Advance();
-            throw new NotImplementedException();
+            stream.Advance(); // eat the ;
+            var decl = new StaticVariableDeclaration(new Name(unit.Namespace, ident.Text), returnType);
+            decl.Tag<File>(peek.Source); decl.Tag<Position>(peek.StartPosition);
+            unit.AddDeclaration(decl);
+
+            return decl;
         } else if (peek is OpenParenthesis) {
             var func = new FunctionDeclaration(name);
             func.Tag<File>(ident.Source); func.Tag<Position>(ident.StartPosition);
@@ -55,6 +59,7 @@ public class Parser {
                 // Read comma
                 peek = stream.Peek(0);
                 if (peek != null && peek is Comma) {
+                    stream.Advance();
                     continue;
                 } else {
                     break;

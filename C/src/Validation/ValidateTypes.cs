@@ -158,15 +158,9 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
         expr.Loader.Visit(this);
     }
 
-    public void Accept(LocalVariableDeclaration decl)
-    {
-        throw new NotImplementedException();
-    }
+    public void Accept(LocalVariableDeclaration decl) { }
 
-    public void Accept(StaticVariableDeclaration decl)
-    {
-        throw new NotImplementedException();
-    }
+    public void Accept(StaticVariableDeclaration decl) { }
 
     private FunctionDeclaration? currentFunction;
     public void Accept(FunctionDeclaration decl) {

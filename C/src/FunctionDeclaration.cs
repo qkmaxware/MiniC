@@ -3,33 +3,24 @@ namespace Qkmaxware.Languages.C;
 /// <summary>
 /// A function declaration
 /// </summary>
-public class FunctionDeclaration : InternalDeclaration {
+public class FunctionDeclaration : GlobalDeclaration {
     /// <summary>
     /// A namespace for function arguments and locals
     /// </summary>
     /// <returns>namespace</returns>
     public Namespace Namespace {get; private set;} = new Namespace();
 
-    /// <summary>
-    /// The name of the function
-    /// </summary>
-    /// <value>name</value>
-    public Name Name {get; set;}
-
     private List<LocalVariableDeclaration> locals = new List<LocalVariableDeclaration>();
 
-    public FunctionDeclaration(Name name) {
-        this.Name = name;
+    public FunctionDeclaration(Name name) : base(name) {
         this.Body = new CompoundStatement();
     }
 
-    public FunctionDeclaration(Name name, CompoundStatement body) {
-        this.Name = name;
+    public FunctionDeclaration(Name name, CompoundStatement body) : base(name) {
         this.Body = body;
     }
 
-    public FunctionDeclaration(TypeSpecifier returnType, Name name, FormalArgument[] args, CompoundStatement body) {
-        this.Name = name;
+    public FunctionDeclaration(TypeSpecifier returnType, Name name, FormalArgument[] args, CompoundStatement body) : base(name) {
         this.Body = body;
         this.ReturnType = returnType;
         this.FormalArguments.AddRange(args);

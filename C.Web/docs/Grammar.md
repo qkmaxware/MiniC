@@ -8,7 +8,7 @@ The following BNF grammar specification describes the full syntax if the Mini-C 
 <code>
 program			→ decl_list
 decl_list		→ decl_list decl | decl
-decl			→ var_decl | fun_decl
+decl			→ type_spec IDENT ; | fun_decl
 var_decl		→ type_spec IDENT ; | type_spec IDENT = expr ;
 type_spec		→ simple_type | simple_type [ ]
 simple_type     → VOID | INT | UINT | FLOAT | CHAR

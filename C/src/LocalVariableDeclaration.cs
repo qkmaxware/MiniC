@@ -7,11 +7,6 @@ public class LocalVariableDeclaration : InternalDeclaration, IVariableDeclaratio
     /// <value>type specifier</value>
     public TypeSpecifier Type {get; set;}
     /// <summary>
-    /// The name of the variable
-    /// </summary>
-    /// <value>name</value>
-    public Name Name {get; set;}
-    /// <summary>
     /// Scope local is declared in
     /// </summary>
     public FunctionDeclaration Scope {get; private set;}
@@ -20,9 +15,8 @@ public class LocalVariableDeclaration : InternalDeclaration, IVariableDeclaratio
     /// </summary>
     public int LocalIndex => Scope.Locals.IndexOf(this);
 
-    internal LocalVariableDeclaration(FunctionDeclaration scope, Name name, TypeSpecifier type) {
+    internal LocalVariableDeclaration(FunctionDeclaration scope, Name name, TypeSpecifier type) : base(name) {
         this.Scope = scope;
-        this.Name = name;
         this.Type = type;
     }
 
