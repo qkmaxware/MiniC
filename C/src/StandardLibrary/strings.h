@@ -2,33 +2,42 @@
 #define STD_STRINGS_H
 
 char[] int2str(int value) {
-    char[] value;
+    char[] result;
     asm {
         load_arg 0
         i32_to_string
         store_local 0
     }
-    return value;
+    return result;
+}
+
+char int2char(int value) {
+    char result;
+    asm {
+        load_arg 0
+        store_local 0
+    }
+    return result;
 }
 
 char[] uint2str(uint value) {
-    char[] value;
+    char[] result;
     asm {
         load_arg 0
         u32_to_string
         store_local 0
     }
-    return value;
+    return result;
 }
 
 char[] float2str(uint value) {
-    char[] value;
+    char[] result;
     asm {
         load_arg 0
         f32_to_string
         store_local 0
     }
-    return value;
+    return result;
 }
 
 char[] str_concat(char[] first, char[] second) {

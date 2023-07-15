@@ -22,7 +22,7 @@ stmt			→ local_decl | compound_stmt | if_stmt | while_stmt |
 expr_stmt		→ IDENT = expr ; | IDENT [ expr ] = expr ; | IDENT ( args ) | free(IDENT) ;
 while_stmt		→ WHILE ( expr ) compound_stmt
 compound_stmt	→ { local_decls stmt_list }
-local_decl		→ LOCAL type_spec IDENT ;
+local_decl		→ type_spec IDENT ;
 if_stmt			→ IF expr compound_stmt | IF expr compound_stmt ELSE compound_stmt 
 return_stmt		→ RETURN ; | RETURN expr ;
 break_stmt	    → BREAK ;
