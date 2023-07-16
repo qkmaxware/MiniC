@@ -32,6 +32,12 @@
     <script src="lib/codemirror/codemirror.js" type="text/javascript" charset="utf-8"></script>
     <script src="lib/codemirror/addons.simple.js" type="text/javascript" charset="utf-8"></script>
     <script>
+        function makeBreakpointMarker() {
+            var marker = document.createElement("div");
+            marker.style.color = "#822";
+            marker.innerHTML = "●";
+            return marker;
+        }
         function initEditor(el) {
             CodeMirror.defineSimpleMode(
                 "minic",
@@ -39,7 +45,7 @@
                     // https://codemirror.net/5/demo/simplemode.html
                     start: [
                         { regex: /#[^\n]*/, token: "meta" },
-                        { regex: /\b(?:void|int|uint|float|char|bool|new|len|sizeof|free|if|while|else|return|break|continue)\b/, token: "keyword" },
+                        { regex: /\b(?:void|int|uint|float|char|bool|new|len|sizeof|free|if|while|for|else|return|break|continue)\b/, token: "keyword" },
                         { regex: /\b(?:true|false)\b/, token: "atom" },
                         //{ regex: /[a-zA-Z][a-zA-Z0-9$_]*/, token: "variable" },
                         { regex: /0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?(u|f)?/i, token: "number" },
@@ -56,14 +62,30 @@
                 document.getElementById(el),
                 {
                     lineNumbers: true,
+                    gutters: ["CodeMirror-linenumbers", "breakpoints"],
                     styleActiveLine: true,
                     matchBrackets: true,
                     theme: "material-darker",
                     mode: "minic"
                 }
             );
+            CodeEditor.on("gutterClick", function(cm, n) {
+                var info = cm.lineInfo(n);
+                cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeBreakpointMarker());
+            });
             CodeEditor.setSize("100%", "100%");
             window.editor = CodeEditor;
+        }
+        function getBreakpoints() {
+            var results = [];
+            var lines = window.editor.lineCount();
+            for (var i = 0; i < lines; i++) {
+                var info = window.editor.lineInfo(i);
+                if (info && info.gutterMarkers) {
+                    results.push(i + 1); // line numbers are indexes + 1;
+                }
+            }
+            return results;
         }
         function editorValue() {
             return window.editor.getValue();

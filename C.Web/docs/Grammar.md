@@ -17,12 +17,14 @@ params			→ param_list | VOID
 param_list		→ param_list , param | param
 param			→ type_spec IDENT 
 stmt_list		→ stmt_list stmt | ε
-stmt			→ local_decl | compound_stmt | if_stmt | while_stmt | 
+stmt			→ local_decl | compound_stmt | if_stmt | while_stmt | for_stmt |
 				  return_stmt | break_stmt | continue_stmt | asm_stmt | expr_stmt
-expr_stmt		→ IDENT = expr ; | IDENT [ expr ] = expr ; | IDENT ( args ) | free(IDENT) ;
+expr_stmt		→ assignment ; | IDENT [ expr ] = expr ; | IDENT ( args ) | free(IDENT) ;
 while_stmt		→ WHILE ( expr ) compound_stmt
+for_stmt        → FOR ( local_decl ; expr ; assignment ) compound_stmt
 compound_stmt	→ { local_decls stmt_list }
-local_decl		→ type_spec IDENT ;
+local_decl		→ type_spec IDENT ; | type_spec IDENT = expr ;
+assignment      → IDENT = expr
 if_stmt			→ IF expr compound_stmt | IF expr compound_stmt ELSE compound_stmt 
 return_stmt		→ RETURN ; | RETURN expr ;
 break_stmt	    → BREAK ;

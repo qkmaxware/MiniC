@@ -204,6 +204,8 @@ public class Parser {
                 return parseIfStatement(unit, func, stream);
             case WhileKeyword:
                 return parseWhileStatement(unit, func, stream);
+            case ForKeyword:
+                return parseForStatement(unit, func, stream);
             case ReturnKeyword:
                 return parseReturnStatement(unit, func, stream);
             case BreakKeyword:
@@ -497,6 +499,63 @@ public class Parser {
         s.Tag<File>(key.Source); s.Tag<Position>(key.StartPosition);
         return s;
     }
+
+    private Statement parseForStatement(TranslationUnit unit, FunctionDeclaration func, TokenStream stream) {
+        var key = stream.Peek(0);
+        if (key == null)
+            throw new EndOfStreamException();
+        if (key is not ForKeyword)
+            throw new ParserException(key.Source, key.StartPosition, "For statements should start with the 'for' keyword.");
+        stream.Advance();
+
+        openParen(stream);
+        var declAssignment = parseLocalDecl(unit, func, stream);
+        //semicolon(stream); // local decl already parses for a semi-colon
+        var condition = parseExpression(unit, func, stream);
+        semicolon(stream);
+        var increment = parseAssignment(unit, func, stream);
+        closeParen(stream);
+        var body = parseCompoundStatement(unit, func, new CompoundStatement(), stream);
+
+        var block = new CompoundStatement();
+        if (declAssignment != null)
+            block.Add(declAssignment);
+        body.Add(increment);
+        var @while = new WhileStatement(condition, body);
+        block.Add(@while);
+
+        @while.Tag<File>(key.Source); @while.Tag<Position>(key.StartPosition);
+        @block.Tag<File>(key.Source); @block.Tag<Position>(key.StartPosition);
+
+        return block;
+    }
+
+    private void openParen(TokenStream stream) {
+        var next = stream.Peek(0);
+        if (next == null)
+            throw new EndOfStreamException();
+        if (next is not OpenParenthesis)
+            throw new ParserException(next.Source, next.StartPosition, "Expression must start with a parenthesis.");
+        stream.Advance();
+    }
+    private void closeParen(TokenStream stream) {
+        var next = stream.Peek(0);
+        if (next == null)
+            throw new EndOfStreamException();
+        if (next is not CloseParenthesis)
+            throw new ParserException(next.Source, next.StartPosition, "Expression must end with a close parenthesis.");
+        stream.Advance();
+    }
+
+    private void semicolon(TokenStream stream) {
+        var next = stream.Peek(0);
+        if (next == null)
+            throw new EndOfStreamException();
+        if (next is not Semicolon)
+            throw new ParserException(next.Source, next.StartPosition, "Missing semicolon.");
+        stream.Advance();
+    }
+
 
     private ReturnStatement parseReturnStatement(TranslationUnit unit, FunctionDeclaration func, TokenStream stream) {
         var key = stream.Peek(0);

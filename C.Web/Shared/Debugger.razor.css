@@ -1,0 +1,46 @@
+button {
+    color: rgb(0, 130, 222);
+    padding: 8px 8px;
+    background-color: transparent; 
+    cursor: pointer;
+    border: none;
+    display: inline-block;
+    font-size: 28px;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    min-width: 1.8em;
+}
+
+button:hover {
+    color: rgb(0, 130, 222);
+    padding: 8px 8px;
+    background-color: rgb(182, 220, 255);
+}
+
+td {
+    text-align: center;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+}
+
+.row nav {
+    width: 256px;
+    min-width: 256px;
+    max-width: 45%;
+    padding: 12px;
+    border-right: 2px solid #888;
+}
+
+.row #article {
+    flex-grow: 1;
+    padding: 12px;
+}
+.row #article code {
+    flex-grow: 1;
+    padding: 12px;
+    word-wrap: pre-wrap;
+}

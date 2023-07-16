@@ -1,9 +1,38 @@
+using Qkmaxware.Languages.C.Text;
 using Qkmaxware.Vm;
 using Qkmaxware.Vm.Instructions;
 
 namespace Qkmaxware.Languages.C;
 
 public class CToBytecode {
+
+    public (Vm.Module, Dictionary<Breakpoint, long>) ConvertWithBreakpoints(TranslationUnit unit, List<Breakpoint> breakpoints) { 
+        using var builder = new ModuleBuilder();
+
+        // Write the header
+        writeHeader(builder, unit, null); 
+
+        // Encode statements
+        Label? main = null;
+        var stmts = new BytecodeBuilder(builder);
+        stmts.Breakpoints = breakpoints;
+        foreach (var declaration in unit) {
+            if (declaration is FunctionDeclaration funcdef) {
+                var l = stmts.Visit(funcdef);
+                if (funcdef == unit.Main) {
+                    main = l;
+                }
+            } else {
+                declaration.Visit(stmts);
+            }
+        }
+        
+        // Redo header
+        builder.RewindStream(0);
+        writeHeader(builder, unit, main);
+        
+        return (builder.ToModule(), stmts.BreakpointMap);
+    }
 
     public Vm.Module Convert(TranslationUnit unit) {
         using var builder = new ModuleBuilder();
@@ -64,6 +93,23 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         this.builder = builder;
     }
 
+    public List<Breakpoint>? Breakpoints;
+    public Dictionary<Breakpoint, long> BreakpointMap {get; private set;} = new Dictionary<Breakpoint, long>();
+    private void checkBreakpoint(AstNode node) {
+        if (Breakpoints == null)
+            return;
+
+        File? src; Position? pos;
+        if (node.TryGetTag<File>(out src) && node.TryGetTag<Position>(out pos)) {
+            // If there is a breakpoint for this, mark it's position
+            foreach (var breakpoint in Breakpoints) {
+                if (breakpoint.File == src && breakpoint.LineNumber == pos.LineNumber && !BreakpointMap.ContainsKey(breakpoint)) {
+                    BreakpointMap[breakpoint] = builder.Anchor();
+                }
+            }
+        } 
+    }
+
     private Dictionary<FunctionDeclaration, Label> labels = new Dictionary<FunctionDeclaration, Label>();
     private Dictionary<FunctionDeclaration, List<Action<Label>>> function_label_thunks = new Dictionary<FunctionDeclaration, List<Action<Label>>>();
     public void Accept(LocalVariableDeclaration decl) {
@@ -71,14 +117,17 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(StaticVariableDeclaration decl) {
+        checkBreakpoint(decl);
         var @ref = builder.AddStatic(Operand.From(0));
         decl.Tag(@ref);
     }
     public Label Visit(FunctionDeclaration decl) {
+        checkBreakpoint(decl);
         Accept(decl);
         return labels[decl];
     }
     public void Accept(FunctionDeclaration decl) {
+        checkBreakpoint(decl);
         // DONE
         this.builder.ExportSubprogram(decl.Name.Value);
         var label = this.builder.Label(decl.Name.Value);
@@ -122,6 +171,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(AsmStatement stmt) {
         // DONE 
+        checkBreakpoint(stmt);
         var assembler = new Vm.Assembly.Asm1xParser();
         using var reader = new StringReader(stmt.Assembly);
         var submodule = assembler.Parse(reader);
@@ -130,6 +180,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(AssignmentStatement stmt) {
         // TODO 
+        checkBreakpoint(stmt);
         switch (stmt.Variable) {
             case LocalVariableDeclaration local:
                 stmt.Value.Visit(this);
@@ -152,7 +203,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     public void Accept(ArrayAssignmentStatement stmt) {
         if (stmt.Variable == null)
             throw new ArgumentException("Cannot index element from null variable");
-
+        checkBreakpoint(stmt);
         // Pointer on stack
         new LoadVarExpression(stmt.Variable).Visit(this);
         // Offset on stack
@@ -165,6 +216,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(CompoundStatement stmts) {
         // DONE
+        checkBreakpoint(stmts);
         foreach (var stmt in stmts) {
             stmt.Visit(this); // Do whatever the sub-statements need to do
         }
@@ -193,9 +245,10 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         */
 
         // Create initial code
+        checkBreakpoint(stmt);
         var if_block = builder.Anchor();
         var if_end = if_block;
-        var branch_anchors = new List<(long start, long jump, long end)>();
+        var branch_anchors = new List<(long start, long false_jump, long true_jump, long end)>();
         foreach (var branch in stmt.Branches) {
             var branch_anchor = builder.Anchor();
 
@@ -210,7 +263,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
             this.Accept(branch.Branch);
             var branch_end = builder.Anchor();
             builder.Goto(0);               // FIX 2: Temporarily set this to 0 to fix later
-            branch_anchors.Add((start: branch_anchor, jump: jump_anchor, end: branch_end));
+            branch_anchors.Add((start: branch_anchor, false_jump: jump_anchor, true_jump: branch_end, end: builder.Anchor()));
         }
         if_end = builder.Anchor();
 
@@ -218,12 +271,12 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         for (var i = 0; i < branch_anchors.Count; i++) {
             // Fix condition jump
             var now = builder.Anchor();
-            var next_anchor = (i + 1 < branch_anchors.Count) ? branch_anchors[i + 1].start : if_end;
-            builder.RewindStream(branch_anchors[i].jump);
+            var next_anchor = ((i + 1) < branch_anchors.Count) ? branch_anchors[i + 1].start : if_end;
+            builder.RewindStream(branch_anchors[i].false_jump);
             builder.GotoIfStackTopZero(next_anchor); // FIX 1: Fill in jump to next branch
 
             // Fix end jump
-            builder.RewindStream(branch_anchors[i].end);
+            builder.RewindStream(branch_anchors[i].true_jump);
             builder.Goto(if_end); // FIX 2: Fill in jump to the end of the if statement
             builder.RewindStream(now);
         }
@@ -231,6 +284,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(ReturnStatement stmt) {
         // DONE
+        checkBreakpoint(stmt);
         if (stmt.ReturnedValue == null) {
             builder.PushInt32(0);
             builder.ReturnResult();
@@ -257,6 +311,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
             .loop_end
         */
         // Loop start
+        checkBreakpoint(stmt);
         var data = new LoopData();
         var loop_start_anchor = builder.Anchor();
         data.Start = loop_start_anchor;
@@ -288,6 +343,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(BreakStatement stmt) {
         LoopData? data;
+        checkBreakpoint(stmt);
         if (loops.TryPeek(out data)) {
             data.BreakAddresses.Add(builder.Anchor());
             builder.Goto(data.Start); // FIX break later
@@ -298,6 +354,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(ContinueStatement stmt) {
         LoopData? data;
+        checkBreakpoint(stmt);
         if (loops.TryPeek(out data)) {
             builder.Goto(data.Start);
         } else {
@@ -306,6 +363,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(ExprStatement stmt) {
+        checkBreakpoint(stmt);
         stmt.Expression.Visit(this);
         builder.PopStackTop(); // remove the expression value from the stack (keep the stack clean)
     }
@@ -316,6 +374,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(LoadVarExpression expr) {
         // TODO 
+        checkBreakpoint(expr);
         if (expr.Variable != null) {
             switch (expr.Variable) {
                 case FormalArgument arg:
@@ -344,6 +403,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
             throw new ArgumentException("Cannot index element from null variable");
 
         // Put the pointer on top of the stack
+        checkBreakpoint(expr);
         new LoadVarExpression(expr.Variable).Visit(this);
         // Put the index on the stack
         expr.Index.Visit(this);
@@ -356,6 +416,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(NewArrayExpression expr) {
         // Put size on the stack
+        checkBreakpoint(expr);
         expr.Size.Visit(this);
         builder.PushInt32(sizeOf(expr.Type.ElementType)); 
         builder.MultiplyInt32(); // Size(bytes) = Size(elements) * Size(element_type)
@@ -364,21 +425,25 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(LiteralIntExpression expr) {
+        checkBreakpoint(expr);
         builder.PushInt32(expr.Value);
         exprResultType = Integer.Instance;
     }
 
     public void Accept(LiteralUIntExpression expr) {
+        checkBreakpoint(expr);
         builder.PushUInt32(expr.Value);
         exprResultType = UnsignedInteger.Instance;
     }
     
     public void Accept(LiteralFloatExpression expr) {
+        checkBreakpoint(expr);
         builder.PushFloat32(expr.Value);
         exprResultType = Float.Instance;
     }
 
     public void Accept(LiteralStringExpression expr) {
+        checkBreakpoint(expr);
         // Option 1, use constants
         //var @const = builder.AddConstantUtf8String(expr.Value);
         //builder.PushConstant(@const);
@@ -394,8 +459,10 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(CallExpression expr) {
+        checkBreakpoint(expr);
         if (expr.Arguments.Count != expr.Function.FormalArguments.Count)
             throw new ArgumentException("Argument count mismatch");
+
         // Evaluate arguments in order
         foreach (var arg in expr.Arguments) {
             arg.Visit(this);
@@ -409,9 +476,15 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
             builder.Call(label, expr.Arguments.Count);  // FIX 1 replace temp value
             builder.RewindStream(now);
         });
+        // Clear the arguments
+        for (var i = 0; i < expr.Function.FormalArguments.Count; i++) {
+            builder.SwapStackTop();
+            builder.PopStackTop();
+        }
     }
 
     public void Accept(OrExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -432,6 +505,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(AndExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -452,6 +526,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(XorExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -493,6 +568,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(AddExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -525,6 +601,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(SubExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -557,6 +634,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(MulExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -589,6 +667,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(DivExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -621,6 +700,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(RemExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -653,6 +733,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(GtExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -683,6 +764,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(LtExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -713,6 +795,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(EqExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -746,6 +829,7 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
     
     public void Accept(NeqExpression expr) {
+        checkBreakpoint(expr);
         // Evaluate args
         expr.LhsOperand.Visit(this);
         var lhsType = exprResultType;
@@ -779,18 +863,21 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
     }
 
     public void Accept(LengthExpression expr) {
+        checkBreakpoint(expr);
         expr.Loader.Visit(this);
         exprResultType = Integer.Instance;
         builder.ArrayLength();
     }
 
     public void Accept(SizeOfExpression expr) {
+        checkBreakpoint(expr);
         expr.Loader.Visit(this);
         exprResultType = Integer.Instance;
         builder.ObjectSize();
     }
     
     public void Accept(FreeExpression expr) {
+        checkBreakpoint(expr);
         expr.Loader.Visit(this); // Load var on top of stack
         builder.DuplicateStackTop();
         builder.Free(); // Free memory

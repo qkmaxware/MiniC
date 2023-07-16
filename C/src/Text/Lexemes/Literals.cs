@@ -77,6 +77,7 @@ public class KeywordOrIdentifierLexeme : Lexeme {
                 "free" => new FreeKeyword(source, before, after),
 
                 "while" => new WhileKeyword(source, before, after),
+                "for" => new ForKeyword(source, before, after),
                 "if" => new IfKeyword(source, before, after),
                 "else" => new ElseKeyword(source, before, after),
                 "return" => new ReturnKeyword(source, before, after),

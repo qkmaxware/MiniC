@@ -28,6 +28,10 @@ public class WhileKeyword : Token {
     public WhileKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
 }
 
+public class ForKeyword : Token {
+    public ForKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
+}
+
 public class IfKeyword : Token {
     public IfKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
 }

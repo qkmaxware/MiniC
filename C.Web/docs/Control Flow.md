@@ -20,10 +20,18 @@ if (x > 0) {
 </code></pre>
 
 ## Iterative Statements
-Iterative statements are used to repeatedly run code, usually until a condition is met. Currently only iterative statement Mini-C supports is the while loop. This kind of loop will repeat code as long as a condition evaluates to true. The reason why the while loop is the only supported loop type at this time is because other loop types can be represented using while loops.
+Iterative statements are used to repeatedly run code, usually until a condition is met. Both FOR and WHILE loops are currently supported by Mini-C. However, the for loop is just syntactic sugar for a while loop. For loops can easily be decomposed into a while loop. So technically Mini-C only supports while loops, but there is syntax for a for loop.
 <pre><code>
-while (condition) {
+for (int i = 0; condition(i); i = i + 1) {
     doSomething();
+}
+</code></pre>
+is the same as
+<pre><code>
+int i = 0;
+while (condition(i)) {
+    doSomething();
+    i = i + 1;
 }
 </code></pre>
 

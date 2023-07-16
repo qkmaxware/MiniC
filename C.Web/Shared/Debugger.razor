@@ -1,0 +1,150 @@
+@using System.Linq;
+@using Qkmaxware.Vm;
+
+<div class="row">
+<nav id="stack">
+    <h3>Stack</h3>
+    <table>
+        <thead>
+            <th>&nbsp;&nbsp;</th>
+            <th>I32</th>
+            <th>U32</th>
+            <th>F32</th>
+        </thead>
+        <tbody>
+        @if (this.currentThread != null) {
+            var i = 0;
+            foreach (var operand in Enumerable.Reverse<Operand>(this.currentThread.Environment.Stack)) {
+                var self = operand;
+                <tr>
+                    <td>
+                        @if((this.currentThread.Environment.Stack.SP - 1 - i) == this.currentThread.Environment.Stack.FP){<text>FP</text>}
+                        @if((this.currentThread.Environment.Stack.SP - 1 - i) == (this.currentThread.Environment.Stack.FP + 4)){<text>LCL</text>}
+                    </td>
+                    <td>@self.Int32</td>
+                    <td>@self.UInt32</td>
+                    <td>@self.Float32</td>
+                </tr>
+                i = i + 1;
+            }
+        }
+        </tbody>
+    </table>
+</nav>
+<div id=article>
+    <h3>Next Instruction</h3>
+    @if (currentThread != null) {
+        var next = getNextInstruction();
+        if(next != null) {
+            <h4>0x@(next.Instruction.Opcode.ToString("X")) @next.Instruction.Name</h4>
+            <h5>Position</h5>  
+            <span>- 0x@(currentThread.PC.ToString("X")) (@currentThread.PC.ToString())</span>
+            <h5>Arguments</h5>
+            <table>
+                <thead>
+                    <th>Name</th>
+                    <th>Value</th>
+                    <th>Value <small>(i32)</small></th>
+                    <th>Value <small>(u32)</small></th>
+                    <th>Value <small>(f32)</small></th>
+                </thead>
+                <tbody>
+                    @{var arg_index = 0;}
+                    @foreach (var arg in next.Arguments) {
+                        <tr>
+                            <td>@next.Instruction.Arguments.ElementAtOrDefault(arg_index)?.Name</td>
+                            <td>@(arg is Operand op ? "0x" + op.UInt32.ToString("X") : arg.ValueToString())</td>
+                            <td>@(arg is Operand op1 ? op1.Int32.ToString() : string.Empty)</td>
+                            <td>@(arg is Operand op2 ? op2.UInt32.ToString() : string.Empty)</td>
+                            <td>@(arg is Operand op3 ? op3.Float32.ToString() : string.Empty)</td>
+                        </tr>
+                        arg_index += 1;
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    <h3>Heap</h3>
+</div>
+</div>
+
+<div style="text-align: center;">
+    <button @onclick=runNext title="Next instruction"><i class="fa fa-play"></i></button>    
+    <button @onclick=runBreakpoint title="Run until next breakpoint"><i class="fa fa-step-forward"></i></button>
+    <button @onclick=runEnd title="Run until end"><i class="fa fa-fast-forward"></i></button>
+    <button @onclick=stop title="Stop"><i class="fa fa-stop"></i></button>
+</div>
+
+@code {
+    private Machine? vm;
+    private Module? currentModule;
+    private ThreadOfExecution? currentThread;
+    private List<long> breakpoints = new List<long>();
+
+    public void Debug(HostInterface host, Module module, List<long> breakpoints) {
+        vm = new Machine(host);
+        this.currentModule = module;
+        this.currentThread = vm.LoadProgram(module);
+        foreach (var @break in breakpoints) {
+            currentThread.AddBreakpoint(@break);
+        }
+        this.breakpoints.Clear();
+        this.breakpoints.AddRange(breakpoints);
+        StateHasChanged();
+    }
+
+    private void runNext() {
+        if (currentThread == null || !currentThread.HasNextInstruction)
+            return;
+        
+        if (!currentThread.RunNext()) {
+            stop();
+        }
+    }
+
+    private void runBreakpoint() {
+        if (currentThread == null || !currentThread.HasNextInstruction)
+            return;
+
+        currentThread.RunUntilBreakpoint();
+    }
+
+    private void runEnd() {
+        if (currentThread == null || !currentThread.HasNextInstruction)
+            return;
+
+        currentThread.RunUntilComplete();
+    }
+
+    private void stop() {
+        currentModule = null;
+        currentThread = null;
+    }
+
+    private DisassembledInstruction? getNextInstruction() {
+        if (currentModule == null || currentThread == null)
+            return null;
+
+        if(!currentThread.HasNextInstruction)
+            return null;
+
+        using (var ireader = new BinaryReader(new BytecodeStream(currentModule))) {
+            ireader.BaseStream.Position = currentThread.PC;
+            var opcode = ireader.ReadByte();
+            var instr = InstructionMap.Instance[opcode];
+            if (instr == null)
+                return null;
+
+            var args = new VmValue[0];
+            if (instr != null) {
+                args = new VmValue[instr.Arity];
+                var arg = 0;
+                foreach (var argSpec in instr.Arguments) {
+                    args[arg++] = argSpec.ReadValue(ireader);
+                }
+            }
+
+            return new DisassembledInstruction(currentThread.PC, instr, args);
+        }
+    }
+}

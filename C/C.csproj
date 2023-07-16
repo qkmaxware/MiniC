@@ -20,7 +20,8 @@
 
   <ItemGroup>
     <PackageReference Include="Qkmaxware.Vm " Version="*" />
-    <EmbeddedResource Include="src/StandardLibrary/*.h"/>
+    <!--<ProjectReference Include="..\..\Stack Based VM\Qkmaxware.Vm\Qkmaxware.Vm.csproj" />-->
+    <EmbeddedResource Include="src/StandardLibrary/*.h" />
   </ItemGroup>
 
 </Project>

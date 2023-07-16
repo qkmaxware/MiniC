@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using System.Linq
 @using System.Text;
 @using Qkmaxware.Vm;
 @using Qkmaxware.Vm.Assembly;
@@ -27,6 +28,7 @@ int main() {
         <button @onclick=help title="Show help window"><i class="fa fa-info-circle"></i></button>
         <button @onclick=download title="Download bytecode"><i class="fa fa-download"></i></button>
         <button @onclick=stdin title="Settings"><i class="fa  fa-gears"></i></button>
+        <button @onclick=buildAndDebug title="Debug bytecode"><i class="fa fa-bug"></i></button>
         <button @onclick=buildAndRun title="Run"><i class="fa fa-play"></i></button>
     </div>
     <div>
@@ -132,7 +134,27 @@ int main() {
     </div>
 </div>
 
+<div class="modal" style="display: @(showDebugger? "block" : "none");">
+    <div class="modal-content">
+        <header>
+            Bytecode Debug
+            <button style="float: right;" @onclick=closeDebugger>&times;</button>
+        </header>
+        <Debugger @ref=debugger></Debugger>
+        <footer></footer>
+    </div>
+</div>
+
 @code {
+
+    private bool showDebugger = false;
+    private Debugger? debugger;
+    private void openDebugger() {
+        showDebugger = true;
+    }
+    private void closeDebugger() {
+        showDebugger = false;
+    }
 
     private Dictionary<Group, List<Document>> helpDocs = 
         Document
@@ -184,7 +206,48 @@ int main() {
     print_str(str);
     free(str);
     return 0;
-}"},
+}"}, {
+    "Fibonacci",
+@"#include <console.h>
+#include <strings.h>
+
+int fib(int n) {
+	if (n == 0) {
+    	return 0;
+    }
+	else if (n == 1) {
+    	return 1;
+    }
+    else {
+    	return fib(n - 1) + fib(n - 2);
+    }
+}
+
+int main() {
+	char[] intro = ""fibonacci("";
+    char[] is = "") = "";
+    char[] newline = ""\n"";
+	
+    for (int n = 0; n < 7; n = n + 1) {
+    	char[] input = int2str(n);
+    	print_str(intro); 
+        print_str(input);
+        print_str(is);
+        free(input);
+        
+    	int x = fib(n);
+        char[] str = int2str(x);
+        print_str(str);
+        print_str(newline);
+        free(str);
+    }
+    
+    free(intro);
+    free(is);
+    free(newline);
+    return 0;
+}"
+}
     };
     private bool showLoad;
     private List<string>? saves;
@@ -219,7 +282,16 @@ int main() {
         showHelp = false;
     }
 
-    private async Task<Result<Qkmaxware.Vm.Module>> compile() {
+    private async Task<int[]> getBreakpointLines() {
+        try {
+            var points = await js.InvokeAsync<int[]>("getBreakpoints");
+            return points;
+        } catch {
+            return new int[0];
+        }
+    }
+
+    private async Task<Result<Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>>> compile() {
         try{
             var program = await js.InvokeAsync<string>("editorValue");
 
@@ -237,11 +309,13 @@ int main() {
             var tokens = lexer.Tokenize(preprocessor);
             var unit = parser.Parse(tokens);
             unit.Validate();
-
+            
+            var breakpoints = (await getBreakpointLines()).Select(line => new Breakpoint(file, line)).ToList();
             var emitter = new CToBytecode();
-            return new Result<Qkmaxware.Vm.Module>(emitter.Convert(unit));
+            var results = emitter.ConvertWithBreakpoints(unit, breakpoints);
+            return new Result<Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>>(new Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>(results.Item1, results.Item2));
         } catch (Exception e) {
-            return new Result<Qkmaxware.Vm.Module>(e);
+            return new Result<Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>>(e);
         }
     }
 
@@ -249,12 +323,12 @@ int main() {
         try {
             console.Clear();
             var result = await compile();
-            Qkmaxware.Vm.Module? module;
+            Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>? module;
             if (result.TryUnwrap(out module)) {
 
                 using (var stream = new MemoryStream()) {
                     var writer = new BinaryWriter(stream);
-                    module.EncodeFile(writer);
+                    module.Item1.EncodeFile(writer);
 
                     writer.Flush();
                     stream.Position = 0;
@@ -294,7 +368,7 @@ int main() {
         try {
             console.Clear();
             var result = await compile();
-            Qkmaxware.Vm.Module? module;
+            Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>? module;
             if (result.TryUnwrap(out module)) {
                 var sb = new StringBuilder();
                 var host = new HostInterface(
@@ -302,13 +376,47 @@ int main() {
                     stdout: new StringWriter(sb)
                 );
                 var vm = new Machine(host);
-                var thread = vm.LoadProgram(module);
+                var thread = vm.LoadProgram(module.Item1);
 
                 await InvokeAsync(StateHasChanged);
                 thread.RunUntilComplete();
 
                 console.AppendLine(DateTime.Now + "> ");
                 console.AppendLine(sb.ToString());
+            } else {
+                Exception? e2;
+                if (result.TryUnwrapException(out e2)) {
+                    console.AppendLine(DateTime.Now + "> ");
+                    if (e2 is IPrettyPrint pretty) {
+                        console.Append(pretty.PrettyPrint());
+                    } else {
+                        console.Append(e2);
+                    }
+                    console.AppendLine();
+                }
+            }
+        } catch (Exception e) {
+            notifications.Add(new Notification(NotificationLevel.Error, e.Message));
+            console.AppendLine(DateTime.Now + "> ");
+            console.AppendLine(e.ToString());
+        }
+    }
+
+    private async Task buildAndDebug() {
+        try {
+            console.Clear();
+            var result = await compile();
+            Tuple<Qkmaxware.Vm.Module, Dictionary<Breakpoint, long>>? module;
+            if (result.TryUnwrap(out module)) {
+                if (debugger != null) {
+                    var sb = new StringBuilder();
+                    var host = new HostInterface(
+                        stdin: new StringReader(this.stdinText ?? string.Empty),
+                        stdout: new StringWriter(sb)
+                    );
+                    debugger.Debug(host, module.Item1, module.Item2.Values.ToList());
+                    openDebugger();
+                }
             } else {
                 Exception? e2;
                 if (result.TryUnwrapException(out e2)) {
