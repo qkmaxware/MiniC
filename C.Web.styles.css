@@ -209,3 +209,50 @@ button:hover[b-3dig6cg0bp] {
     text-align: right;
     font-size: small;
 }
+/* /Shared/Debugger.razor.rz.scp.css */
+button[b-toauojwzzo] {
+    color: rgb(0, 130, 222);
+    padding: 8px 8px;
+    background-color: transparent; 
+    cursor: pointer;
+    border: none;
+    display: inline-block;
+    font-size: 28px;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    min-width: 1.8em;
+}
+
+button:hover[b-toauojwzzo] {
+    color: rgb(0, 130, 222);
+    padding: 8px 8px;
+    background-color: rgb(182, 220, 255);
+}
+
+td[b-toauojwzzo] {
+    text-align: center;
+}
+
+.row[b-toauojwzzo] {
+    display: flex;
+    flex-direction: row;
+}
+
+.row nav[b-toauojwzzo] {
+    width: 256px;
+    min-width: 256px;
+    max-width: 45%;
+    padding: 12px;
+    border-right: 2px solid #888;
+}
+
+.row #article[b-toauojwzzo] {
+    flex-grow: 1;
+    padding: 12px;
+}
+.row #article code[b-toauojwzzo] {
+    flex-grow: 1;
+    padding: 12px;
+    word-wrap: pre-wrap;
+}

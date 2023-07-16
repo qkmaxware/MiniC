@@ -55,6 +55,10 @@ a, .btn-link {
     color: red;
 }
 
+table {
+    width: 100%;
+}
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;
