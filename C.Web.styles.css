@@ -3,11 +3,54 @@
     position: absolute;
     width: 100vw;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
 }
 
 #editor[b-3dig6cg0bp] {
     width: 100%;
-    height: 100%;
+    flex-grow: 1;
+}
+
+#terminal[b-3dig6cg0bp] {
+    width: 100%;
+    color: white;
+    z-index: 5;
+    border-style: solid;
+    border-color: rgb(39, 39, 39);
+    border-width: medium 0px 0px 0px;
+    background-color: rgb(31, 31, 31);
+}
+#terminal .bar[b-3dig6cg0bp] {
+    padding: 0px 12px;
+    border-style: solid;
+    border-color: rgb(53, 53, 53);
+    border-width: 0px 0px thin 0px;
+}
+#terminal .bar pre[b-3dig6cg0bp] {
+    display: inline;
+}
+#terminal .bar button[b-3dig6cg0bp] {
+    font-size: small;
+    display: inline;
+}
+#terminal .output[b-3dig6cg0bp] {
+    padding: 0px 12px;
+    max-height: 30vh;
+    resize: vertical;
+    overflow-y: scroll;
+    overflow-x: auto;
+    overflow-wrap: break-word;
+}
+
+#terminal .attribution[b-3dig6cg0bp] {
+    border-style: solid;
+    border-color: rgb(53, 53, 53);
+    border-width: thin 0px 0px 0px;
+    text-align: right;
+    font-size: small;
 }
 
 #actions[b-3dig6cg0bp] {
@@ -166,48 +209,6 @@ button:hover[b-3dig6cg0bp] {
     padding: 2px 16px;
     border-radius: 0px 0px 8px 8px;
     background-color: rgb(90, 90, 90);
-}
-
-#terminal[b-3dig6cg0bp] {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    color: white;
-    z-index: 5;
-    border-style: solid;
-    border-color: rgb(39, 39, 39);
-    border-width: medium 0px 0px 0px;
-    background-color: rgb(31, 31, 31);
-}
-#terminal .bar[b-3dig6cg0bp] {
-    padding: 0px 12px;
-    border-style: solid;
-    border-color: rgb(53, 53, 53);
-    border-width: 0px 0px thin 0px;
-}
-#terminal .bar pre[b-3dig6cg0bp] {
-    display: inline;
-}
-#terminal .bar button[b-3dig6cg0bp] {
-    font-size: small;
-    display: inline;
-}
-#terminal .output[b-3dig6cg0bp] {
-    padding: 0px 12px;
-    max-height: 30vh;
-    resize: vertical;
-    overflow-y: scroll;
-    overflow-x: auto;
-    overflow-wrap: break-word;
-}
-
-#terminal .attribution[b-3dig6cg0bp] {
-    border-style: solid;
-    border-color: rgb(53, 53, 53);
-    border-width: thin 0px 0px 0px;
-    text-align: right;
-    font-size: small;
 }
 /* /Shared/Debugger.razor.rz.scp.css */
 button[b-toauojwzzo] {
