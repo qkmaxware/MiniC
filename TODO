@@ -1,0 +1,60 @@
+# Support for ENUM types
+[ ] Completed
+
+The idea of enumerated types is to assign values to specific names. These are similar to variables in that they bind a name to a value. Not sure if there is much real point in doing this as variables effectively do most of the same stuff.
+
+The first thing to figure out is the syntax for declaration. I think using something similar to C's normal typedef syntax might be most appropriate
+```cpp
+typedef enum {
+    Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4, Friday = 5, Saturday = 6, Sunday = 7
+} Days;
+```
+
+The next feature to resolve is how to use this in variable/argument type specifications. Once again borrowing from C we can just prefix the type name with the keyword enum. 
+```cpp
+void doSomething(enum Days day) {
+    // ...
+}
+```
+
+The last thing to resolve is how to use the value in an expression. Just stating the enum value by name is more traditional C, but this could pose issues with static variable declarations and namespacing. We could also borrow the arrow syntax used for struct field accessing. 
+```cpp
+enum Days day = Monday;
+// or 
+enum Days day = Days->Monday;
+```
+
+At compile time these can just be resolved to integer values and we can ditch the whole enumeration abstraction. 
+
+# Support for user defined STRUCTS
+[ ] Completed
+
+Similar to with ENUMS, we can copy some of the C syntax for typedefs. Fundamentally STRUCTS are not overly different from arrays in terms of implementation as each fields is accessed by an offset from the base pointer. The only difference is that the fields are not homogeneous. Since all my types are uniform size however this can all be handled by validation passes for type-checking.
+
+```cpp
+typedef struct {
+    char[] Name;    // 32bit pointer
+    int Age;        // 32bit age
+} Person;
+```
+
+And it's use in a type-spec:
+
+```cpp
+void sayHi(struct Person person) {
+    // ...
+}
+```
+
+The only syntactic issue would be in creating new structures. Would need to overload the functionality of the `new` operator. This doesn't look great in it's current form as struct and Person are both used two times and repetition is bad. For field accessing, the arrow syntax from C can be used. 
+
+```cpp
+struct Person MakePerson() {
+    struct Person john = new struct Person; 
+    john->Name = "John Smith";
+    john->Age = 24;
+    return john;
+}
+```
+
+The semantics of `new` is simply allocating the amount of memory required by the structure on the heap. All the values will be set to their defaults and must be filled in after the fact. Since all primitive in Mini-C are 32bits that means that sizeof(struct) is equal to 4 bytes * number of fields. 

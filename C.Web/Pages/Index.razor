@@ -19,6 +19,18 @@ int main() {
     free(str);
     return 0;
 }</textarea>
+    <div id="terminal">
+        <div class="bar">
+            <pre>OUTPUT</pre>
+            <button @onclick=@(() => console?.Clear())>&times;</button>
+        </div>
+        <pre class=output>
+            <code>@console.ToString()</code>
+        </pre>
+        <div class="attribution">
+            Powered by <a href="https://codemirror.net/" target="_blank"><img src="https://codemirror.net/style/logo.svg" style="width: 1em">Code Mirror</a>
+        </div>
+    </div>
 </div>
 
 <div id="actions">
@@ -43,18 +55,6 @@ int main() {
                 </div>
             </div>
         }
-    </div>
-</div>
-<div id="terminal">
-    <div class="bar">
-        <pre>OUTPUT</pre>
-        <button @onclick=@(() => console?.Clear())>&times;</button>
-    </div>
-    <pre class=output>
-        <code>@console.ToString()</code>
-    </pre>
-    <div class="attribution">
-        Powered by <a href="https://codemirror.net/" target="_blank"><img src="https://codemirror.net/style/logo.svg" style="width: 1em">Code Mirror</a>
     </div>
 </div>
 

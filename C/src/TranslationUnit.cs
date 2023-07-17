@@ -44,7 +44,8 @@ public class TranslationUnit : IEnumerable<GlobalDeclaration> {
     /// </summary>
     public void Validate() {
         // Passes go here
-        new Validation.AnalyzeExpressionTypes().Validate(this);
-        new Validation.ValidateTypes().Validate(this);
+        new Validation.AnalyzeExpressionTypes().Validate(this);     // Compute the types for all expressions
+        new Validation.ValidateTypes().Validate(this);              // Validate the types for expressions/operators/statements
+        new Validation.ValidateLoopControlFlow().Validate(this);    // Validate that all break/control are inside a loop
     }
 }

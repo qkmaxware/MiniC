@@ -65,6 +65,9 @@
         }
     }
     <h3>Heap</h3>
+    @if (currentThread != null) {
+        
+    }
 </div>
 </div>
 
@@ -136,12 +139,10 @@
                 return null;
 
             var args = new VmValue[0];
-            if (instr != null) {
-                args = new VmValue[instr.Arity];
-                var arg = 0;
-                foreach (var argSpec in instr.Arguments) {
-                    args[arg++] = argSpec.ReadValue(ireader);
-                }
+            args = new VmValue[instr.Arity];
+            var arg = 0;
+            foreach (var argSpec in instr.Arguments) {
+                args[arg++] = argSpec.ReadValue(ireader);
             }
 
             return new DisassembledInstruction(currentThread.PC, instr, args);
