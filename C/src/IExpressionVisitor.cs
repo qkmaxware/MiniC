@@ -4,6 +4,7 @@ public interface IExpressionVisitor {
 
     public void Accept(LoadVarExpression expr);
     public void Accept(LoadArrayElementExpression expr);
+    public void Accept(LoadEnumConstant expr);
     public void Accept(NewArrayExpression expr);
     public void Accept(LiteralIntExpression expr);
     public void Accept(LiteralUIntExpression expr);

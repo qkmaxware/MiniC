@@ -45,6 +45,8 @@ public class ValidateLoopControlFlow : BaseValidationPass, IDeclarationVisitor, 
 
     public void Accept(StaticVariableDeclaration decl) { }
 
+    public void Accept(EnumDeclaration decl) {}
+
     private FunctionDeclaration? currentFunction;
     public void Accept(FunctionDeclaration decl) {
         currentFunction = decl;

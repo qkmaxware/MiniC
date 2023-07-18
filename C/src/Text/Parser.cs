@@ -14,19 +14,32 @@ public class Parser {
         }
         return unit;
     }
+    private void assertNotDefined(Namespace space, Identifier ident) {
+        if (space.Exists(ident.Text)) {
+            throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is already declared in this translation unit.");
+        }
+    }
     private InternalDeclaration parseDecl(TranslationUnit unit, TokenStream stream) {
+        // Check if it's a typedef
+        var peek = stream.Peek(0);
+        if (peek == null)
+            throw new EndOfStreamException();
+        if (peek is TypedefKeyword) {
+            var d = parseTypedef(unit, stream);
+            unit.AddDeclaration(d);
+            return d;
+        }
+
         // Parse type-spec
         var returnType = parseTypeSpec(unit, stream);
 
         // Parse ident
         var ident = parseIdentifier(stream);
-        if (unit.Namespace.Exists(ident.Text)) {
-            throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is already declared in this translation unit");
-        }
+        assertNotDefined(unit.Namespace, ident);
         var name = new Name(unit.Namespace, ident.Text);
 
         // Branch on function or static variable
-        var peek = stream.Peek(0);
+        peek = stream.Peek(0);
         if (peek == null)
             throw new EndOfStreamException();
         if (peek is Semicolon) {
@@ -87,6 +100,97 @@ public class Parser {
         }
     }
 
+    private GlobalDeclaration parseTypedef(TranslationUnit unit, TokenStream stream) {
+        // Typedef
+        var peek = stream.Peek(0);
+        if (peek == null)
+            throw new EndOfStreamException();
+        if (peek is not TypedefKeyword) {
+            throw new ParserException(peek.Source, peek.StartPosition, "Type definitions must start with the 'typedef' keyword.");
+        }
+        stream.Advance();
+
+        // Kind
+        var kind = stream.Peek(0);
+        if (kind == null)
+            throw new EndOfStreamException();
+        
+        // Parse the result
+        var result = kind switch {
+            EnumKeyword => parseEnumDecl(unit, stream),
+            _ => throw new ParserException(kind.Source, kind.StartPosition, $"Unknown type container '{kind}'."),
+        };
+
+        // ;
+        semicolon(stream);
+
+        return result;
+    }
+
+    private GlobalDeclaration parseEnumDecl(TranslationUnit unit, TokenStream stream) {
+        // Enum
+        var peek = stream.Peek(0);
+        if (peek == null)
+            throw new EndOfStreamException();
+        if (peek is not EnumKeyword) {
+            throw new ParserException(peek.Source, peek.StartPosition, "Enum declarations must begin with the 'enum' keyword.");
+        }
+        stream.Advance();
+
+        // {
+        openBrace(stream);
+        
+        // comma separated list of IDENT = INT_LIT
+        List<(string, int?)> constants = new List<(string, int?)>();
+        Token? next;
+        while ((next = stream.Peek(0)) != null && next is Identifier) {
+            // IDENT
+            var ident = parseIdentifier(stream);
+            assertNotDefined(unit.Namespace, ident);
+            var const_name = new Name(unit.Namespace, ident.Text);
+
+            // =
+            int? value = null;
+            next = stream.Peek(0);
+            if (next != null && next is AssignmentOperator) {
+                stream.Advance();
+
+                // INT_LIT
+                next = stream.Peek(0);
+                if (next == null) 
+                    throw new EndOfStreamException();
+                if (next is not IntegerLiteralToken v) {
+                    throw new ParserException(next.Source, next.StartPosition, "Missing enum constant value.");
+                }
+                value = v.Value;
+                stream.Advance();
+            }
+
+            constants.Add((ident.Text, value));
+
+            // ,
+            next = stream.Peek(0);
+            if (next != null && next is Comma) {
+                stream.Advance();
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        // }
+        closeBrace(stream);
+
+        // Parse identifier;
+        var name = parseIdentifier(stream);
+        assertNotDefined(unit.Namespace, name);
+        var uname = new Name(unit.Namespace, name.Text);
+
+        // Create type
+        var type = Enumeration.Generate(uname, constants.ToArray());
+        return new EnumDeclaration(type);
+    }
+
     private Identifier parseIdentifier(TokenStream stream) {
         var peek = stream.Peek(0);
         if (peek == null)
@@ -145,20 +249,34 @@ public class Parser {
             case VoidKeyword v:
                 stream.Advance();
                 return Void.Instance;
+            case EnumKeyword e: {
+                    stream.Advance();
+                    var ident = parseIdentifier(stream);
+                    var type = unit.EnumerationTypes.Where(x => x.Name.Value == ident.Text).FirstOrDefault();
+                    if (type == null) {
+                        throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is not an enumeration type.");
+                    }
+                    return type.Type;
+                }
             default:
                 throw new ParserException(peek.Source, peek.StartPosition, "Missing type specification");
         }   
     }
 
-    private CompoundStatement parseCompoundStatement(TranslationUnit unit, FunctionDeclaration func, CompoundStatement block, TokenStream stream) {
-        // {
+    private Token openBrace(TokenStream stream) {
         var open = stream.Peek(0);
         if (open == null)
             throw new EndOfStreamException();
         if (open is not OpenBrace) {
-            throw new ParserException(open.Source, open.StartPosition, "Missing opening { on block of code.");
+            throw new ParserException(open.Source, open.StartPosition, "Missing opening brace '{' symbol.");
         }
         stream.Advance();
+        return open;
+    }
+
+    private CompoundStatement parseCompoundStatement(TranslationUnit unit, FunctionDeclaration func, CompoundStatement block, TokenStream stream) {
+        // {
+        var open = openBrace(stream);
 
         // Body
         var peek = stream.Peek(0);
@@ -169,17 +287,22 @@ public class Parser {
         }
 
         // }
-        var close = stream.Peek(0);
-        if (close == null)
-            throw new EndOfStreamException();
-        if (close is not CloseBrace) {
-            throw new ParserException(close.Source, close.StartPosition, "Missing closing } on block of code.");
-        }
-        stream.Advance();
+        var close = closeBrace(stream);
 
         block.Tag<File>(open.Source); block.Tag<Position>(open.StartPosition);
 
         return block;
+    }
+
+    private Token closeBrace(TokenStream stream) {
+        var close = stream.Peek(0);
+        if (close == null)
+            throw new EndOfStreamException();
+        if (close is not CloseBrace) {
+            throw new ParserException(close.Source, close.StartPosition, "Missing closing brace '}' symbol.");
+        }
+        stream.Advance();
+        return close;
     }
 
     private Statement? parseStatement(TranslationUnit unit, FunctionDeclaration func, CompoundStatement block, TokenStream stream) {
@@ -197,6 +320,7 @@ public class Parser {
             case BoolKeyword b:
             case CharKeyword c:
             case VoidKeyword v:
+            case EnumKeyword e:
                 // All valid types go here ^^ the same as in parseSimpleTypeSpec
                 var localAssignment = parseLocalDecl(unit, func, stream);
                 return localAssignment;
@@ -730,7 +854,31 @@ public class Parser {
             throw new ParserException(ident.Source, ident.StartPosition, $"Variable `{ident.Text}` is not declared in the visible scope.");
         return local;
     }
+    private IVariableDeclaration? getVarOrNull(TranslationUnit unit, FunctionDeclaration func, Identifier ident) {
+        try {
+            return getVar(unit, func, ident);
+        } catch {
+            return null;
+        }
+    }
 
+    private Expression parseSimpleIdentifierExpr(TranslationUnit unit, FunctionDeclaration func, TokenStream stream, Identifier id) {
+        // Simple identifier
+        stream.Advance();
+        var v = getVarOrNull(unit, func, id);
+        if (v != null) {
+            var e = new LoadVarExpression(getVar(unit, func, id));
+            e.Tag<File>(id.Source); e.Tag<Position>(id.StartPosition);
+            return e;
+        } else {
+            var enum_const = unit.EnumerationTypes.SelectMany(type => type.Type.Constants).Where(constant => constant.Name.Value == id.Text).FirstOrDefault();
+            if (enum_const != null) {
+                return new LoadEnumConstant(enum_const.Enum, enum_const);
+            } else {
+                throw new ParserException(id.Source, id.StartPosition, $"Identifier `{id.Text}` is not declared in the visible scope.");
+            }
+        }
+    }
     public Expression? parseAtom(TranslationUnit unit, FunctionDeclaration func, TokenStream stream) {
         /* → ( expr )
            → IDENT | IDENT [ expr ] | IDENT ( args ) | len(IDENT) | sizeof(IDENT)
@@ -800,10 +948,7 @@ public class Parser {
                 next = stream.Peek(1);
                 if (next == null) {
                     // Simple identifier
-                    stream.Advance();
-                    var e = new LoadVarExpression(getVar(unit, func, id));
-                    e.Tag<File>(id.Source); e.Tag<Position>(id.StartPosition);
-                    return e;
+                    return parseSimpleIdentifierExpr(unit, func, stream, id);
                 } else if (next is OpenBracket) {
                     // Array index
                     stream.Advance();
@@ -825,11 +970,8 @@ public class Parser {
                     // Function call
                     return parseFunctionCall(unit, func, stream);
                 } else {
-                    // Simple identifier
-                    stream.Advance();
-                    var e = new LoadVarExpression(getVar(unit, func, id));
-                    e.Tag<File>(id.Source); e.Tag<Position>(id.StartPosition);
-                    return e;
+                    // Simple identifier - can also be an enum constant, how do we determine this?
+                    return parseSimpleIdentifierExpr(unit, func, stream, id);
                 }
             case BooleanLiteralToken b: {
                 stream.Advance();

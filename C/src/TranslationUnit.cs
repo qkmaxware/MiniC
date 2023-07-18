@@ -13,6 +13,11 @@ public class TranslationUnit : IEnumerable<GlobalDeclaration> {
     public Namespace Namespace {get; private set;} = new Namespace();
 
     private List<GlobalDeclaration> declarations = new List<GlobalDeclaration>();
+
+    public IEnumerable<StaticVariableDeclaration> GlobalVariables => declarations.OfType<StaticVariableDeclaration>();
+    public IEnumerable<FunctionDeclaration> Functions => declarations.OfType<FunctionDeclaration>();
+    public IEnumerable<EnumDeclaration> EnumerationTypes => declarations.OfType<EnumDeclaration>();
+
     private int static_pool_count = 0;
 
     public IEnumerator<GlobalDeclaration> GetEnumerator() => declarations.GetEnumerator();

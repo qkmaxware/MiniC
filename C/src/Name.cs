@@ -34,7 +34,7 @@ public class Namespace {
 /// <summary>
 /// An identifier or name
 /// </summary>
-public class Name {
+public class Name : IEquatable<Name> {
     /// <summary>
     /// The value of the name
     /// </summary>
@@ -61,5 +61,9 @@ public class Name {
     }
 
     public override string ToString() => Value;
+
+    public bool Equals(Name? other) {
+        return other != null && other.Value == this.Value && other.DeclaredNamespace == this.DeclaredNamespace;
+    }
 }
 

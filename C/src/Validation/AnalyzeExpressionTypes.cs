@@ -27,6 +27,8 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
 
     public void Accept(StaticVariableDeclaration decl) { }
 
+    public void Accept(EnumDeclaration decl) {}
+
     public void Accept(FunctionDeclaration decl) {
         decl.Body.Visit(this);
     }
@@ -88,6 +90,9 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
             ThrowSemanticError(expr.Index, $"Type of array index must evaluate to an integer and cannot be of type '{type}'.");
         }
         type = ((Array)expr.Variable.Type).ElementType;
+    }
+    public void Accept(LoadEnumConstant expr) {
+        type = expr.Type;
     }
     public void Accept(NewArrayExpression expr) {
         expr.Size.Visit(this);

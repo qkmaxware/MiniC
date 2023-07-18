@@ -45,10 +45,11 @@
                     // https://codemirror.net/5/demo/simplemode.html
                     start: [
                         { regex: /#[^\n]*/, token: "meta" },
-                        { regex: /\b(?:void|int|uint|float|char|bool|new|len|sizeof|free|if|while|for|else|return|break|continue)\b/, token: "keyword" },
+                        { regex: /\b(?:void|int|uint|float|char|bool|new|len|sizeof|free|if|while|for|else|return|break|continue|asm)\b/, token: "keyword" },
                         { regex: /\b(?:true|false)\b/, token: "atom" },
-                        //{ regex: /[a-zA-Z][a-zA-Z0-9$_]*/, token: "variable" },
-                        { regex: /0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?(u|f)?/i, token: "number" },
+                        { regex: /\b(typedef)(?:\s+([a-zA-Z][a-zA-Z0-9_]*))?\b/, token: "keyword"},
+                        { regex: /\b(enum)\s+([a-zA-Z][a-zA-Z0-9_]*)\b/, token: ["keyword", "variable"]},
+                        { regex: /\b0x[a-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:e[-+]?\d+)?(u|f)?\b/i, token: "number" },
                         { regex: /\/\/.*/, token: "comment" },
                         { regex: /"(?:[^\\]|\\.)*?(?:"|$)/, token: "string" },
                     ],

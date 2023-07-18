@@ -121,6 +121,9 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         var @ref = builder.AddStatic(Operand.From(0));
         decl.Tag(@ref);
     }
+
+    public void Accept(EnumDeclaration decl) { /*does nothing*/ } 
+
     public Label Visit(FunctionDeclaration decl) {
         checkBreakpoint(decl);
         Accept(decl);
@@ -410,6 +413,10 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         // Call the specific function
         builder.AddInstruction("get_element");
         exprResultType = ((Array)expr.Variable.Type).ElementType;
+    }
+
+    public void Accept(LoadEnumConstant expr) {
+        builder.PushInt32(expr.Constant.Value);
     }
 
     private int sizeOf(ValueTypeSpecifier type) => 4; // Each element is size 4 in the bytecode

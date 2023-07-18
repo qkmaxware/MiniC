@@ -67,3 +67,11 @@ public class LengthKeyword : Token {
 public class FreeKeyword : Token {
     public FreeKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
 }
+
+public class TypedefKeyword : Token {
+    public TypedefKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
+}
+
+public class EnumKeyword : Token {
+    public EnumKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
+}

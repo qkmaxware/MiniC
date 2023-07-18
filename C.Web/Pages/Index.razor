@@ -246,8 +246,32 @@ int main() {
     free(is);
     free(newline);
     return 0;
-}"
+}"}, {"Enumeration Types",
+@"#include <console.h>
+#include <strings.h>
+
+typedef enum {
+	Mon = 1, Tue, Wed, Thur, Fri, Sat, Sun
+} Days;
+
+int days2int (enum Days day) {
+	int x;
+    asm {
+    	load_arg 0
+        store_local 0
+    }
+    return x;
 }
+
+int main() {
+	enum Days day = Wed;
+	char[] intro = ""The numeric value of the day is: "";
+   	char[] i = int2str(days2int(day));
+   	print_str(i);
+   	free(intro);
+    free(i);
+    return 0;
+}"}
     };
     private bool showLoad;
     private List<string>? saves;

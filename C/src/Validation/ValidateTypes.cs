@@ -70,6 +70,8 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
         expr.Index.Visit(this);
     }
 
+    public void Accept(LoadEnumConstant expr) { }
+
     public void Accept(NewArrayExpression expr) {
         expr.Size.Visit(this);
     }
@@ -161,6 +163,8 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
     public void Accept(LocalVariableDeclaration decl) { }
 
     public void Accept(StaticVariableDeclaration decl) { }
+
+    public void Accept(EnumDeclaration decl) { } 
 
     private FunctionDeclaration? currentFunction;
     public void Accept(FunctionDeclaration decl) {

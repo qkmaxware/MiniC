@@ -87,6 +87,9 @@ public class KeywordOrIdentifierLexeme : Lexeme {
                 "true" => new BooleanLiteralToken(source, before, after, true),
                 "false" => new BooleanLiteralToken(source, before, after, false),
 
+                "typedef" => new TypedefKeyword(source, before, after),
+                "enum" => new EnumKeyword(source, before, after),
+
                 _ => new Identifier(source, before, after, text)
             };
         } else {

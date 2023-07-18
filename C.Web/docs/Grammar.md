@@ -8,10 +8,12 @@ The following BNF grammar specification describes the full syntax if the Mini-C 
 <code>
 program			→ decl_list
 decl_list		→ decl_list decl | decl
-decl			→ type_spec IDENT ; | fun_decl
+decl			→ typedef | fun_decl | type_spec IDENT ; 
+typedef         → TYPEDEF enum_decl
 var_decl		→ type_spec IDENT ; | type_spec IDENT = expr ;
 type_spec		→ simple_type | simple_type [ ]
-simple_type     → VOID | INT | UINT | FLOAT | CHAR
+simple_type     → VOID | INT | UINT | FLOAT | CHAR | ENUM IDENT
+enum_decl       → ENUM { enum_constant* } IDENTIFIER;
 fun_decl		→ type_spec IDENT ( params ) compound_stmt
 params			→ param_list | VOID
 param_list		→ param_list , param | param
