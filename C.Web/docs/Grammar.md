@@ -13,7 +13,8 @@ typedef         → TYPEDEF enum_decl
 var_decl		→ type_spec IDENT ; | type_spec IDENT = expr ;
 type_spec		→ simple_type | simple_type [ ]
 simple_type     → VOID | INT | UINT | FLOAT | CHAR | ENUM IDENT
-enum_decl       → ENUM { enum_constant* } IDENTIFIER;
+enum_decl       → ENUM { enum_constant* } IDENT ;
+enum_constant   → IDENT | IDENT = INT_LIT
 fun_decl		→ type_spec IDENT ( params ) compound_stmt
 params			→ param_list | VOID
 param_list		→ param_list , param | param
