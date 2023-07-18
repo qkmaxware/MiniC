@@ -66,4 +66,6 @@ public class Enumeration : UserDefinedType  {
     public override bool Equals(TypeSpecifier? other) {
         return other is Enumeration e && e.Name.Equals(this.Name);
     }
+
+    public override string ToString() => this.GetType().Name + " " + this.Name.Value;
 }
