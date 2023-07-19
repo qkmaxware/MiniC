@@ -257,3 +257,27 @@ td[b-toauojwzzo] {
     padding: 12px;
     word-wrap: pre-wrap;
 }
+
+.section[b-toauojwzzo] {
+    margin-left: 32px;
+}
+
+.heap span[b-toauojwzzo] {
+    margin-right: 1em;
+    display: inline-block;
+}
+
+.heap-block[b-toauojwzzo] {
+    margin-bottom: 1em;
+    border: 1px solid grey;
+    border-radius: 6px;
+}
+
+.heap-block header.free[b-toauojwzzo] {
+    padding: 4px 6px;
+    background-color: green;
+}
+.heap-block header.allocated[b-toauojwzzo] {
+    padding: 4px 6px;
+    background-color: grey;
+}
