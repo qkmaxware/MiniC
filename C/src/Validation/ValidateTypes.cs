@@ -157,7 +157,10 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
     }
 
     public void Accept(FreeExpression expr) {
-        expr.Loader.Visit(this);
+        var loaded_type = new AnalyzeExpressionTypes().EvaluateType(expr.Loader); 
+        if (loaded_type is not IPointerType) {
+            ThrowSemanticError(expr.Loader, "Cannot free values of types which are not allocated to the heap.");
+        }
     }
 
     public void Accept(LocalVariableDeclaration decl) { }

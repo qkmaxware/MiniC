@@ -4,9 +4,9 @@ namespace Qkmaxware.Languages.C;
 /// Memory freeing expression
 /// </summary>
 public class FreeExpression : Expression {
-    public LoadVarExpression Loader {get; private set;}
-    public FreeExpression(IVariableDeclaration var) : base() {
-        this.Loader = new LoadVarExpression(var);
+    public Expression Loader {get; private set;}
+    public FreeExpression(Expression var) : base() {
+        this.Loader = var;
     }
 
     public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);

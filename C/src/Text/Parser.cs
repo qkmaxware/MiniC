@@ -388,7 +388,7 @@ public class Parser {
         stream.Advance();   
 
         // IDENT
-        var ident = parseIdentifier(stream);
+        var ident = parseExpression(unit, func, stream);
 
         // )
         size_next = stream.Peek(0);
@@ -406,7 +406,7 @@ public class Parser {
             throw new ParserException(free_semicolon.Source, free_semicolon.StartPosition, "Missing semicolon after free statement");
         } 
         stream.Advance();
-        var free = new FreeExpression(getVar(unit, func, ident));
+        var free = new FreeExpression(ident);
         free.Tag<File>(peek.Source); free.Tag<Position>(peek.StartPosition);
         return new ExprStatement(free);
     }

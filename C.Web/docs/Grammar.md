@@ -22,7 +22,7 @@ param			→ type_spec IDENT
 stmt_list		→ stmt_list stmt | ε
 stmt			→ local_decl | compound_stmt | if_stmt | while_stmt | for_stmt |
 				  return_stmt | break_stmt | continue_stmt | asm_stmt | expr_stmt
-expr_stmt		→ assignment ; | IDENT [ expr ] = expr ; | IDENT ( args ) | free(IDENT) ;
+expr_stmt		→ assignment ; | IDENT [ expr ] = expr ; | IDENT ( args ) ; | free ( expr ) ;
 while_stmt		→ WHILE ( expr ) compound_stmt
 for_stmt        → FOR ( local_decl ; expr ; assignment ) compound_stmt
 compound_stmt	→ { local_decls stmt_list }

@@ -152,9 +152,7 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
     public void Accept(SizeOfExpression expr) => type = Integer.Instance;
 
     public void Accept(FreeExpression expr) {
-        if (expr.Loader.Variable.Type is not IPointerType)
-            ThrowSemanticError(expr.Loader, $"Can only free data from pointer types and not values of type '{type}'.");
-        type = Void.Instance;
+        expr.Loader.Visit(this);  
     }
 
 }
