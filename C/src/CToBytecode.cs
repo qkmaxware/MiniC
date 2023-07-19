@@ -124,6 +124,8 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
 
     public void Accept(EnumDeclaration decl) { /*does nothing*/ } 
 
+     public void Accept(StructDeclaration decl) { /*does nothing*/ }
+
     public Label Visit(FunctionDeclaration decl) {
         checkBreakpoint(decl);
         Accept(decl);
@@ -214,6 +216,32 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         // Value on stack
         stmt.Value.Visit(this);
 
+        builder.AddInstruction("set_element");
+    }
+
+    private int computeFieldOffset(StructuredType type, Field field) {
+        return type.IndexOf(field) * 4;
+    }
+
+    public void Accept(StructFieldAssignmentStatement stmt) {
+        if (stmt.Variable == null)
+            throw new ArgumentException("Cannot dereference field from null variable.");
+        checkBreakpoint(stmt);
+
+        // Pointer on stack
+        new LoadVarExpression(stmt.Variable).Visit(this);
+
+        // Offset on stack
+        var field = ((StructuredType)stmt.Variable.Type).Fields.Where(field => field.Name == stmt.FieldName).FirstOrDefault();
+        if (field == null)  
+            throw new ArgumentException($"Field '{stmt.FieldName}' doesn't exist.");
+        var index = ((StructuredType)stmt.Variable.Type).IndexOf(field);
+        builder.PushInt32(index);
+
+        // Value on stack
+        stmt.Value.Visit(this);
+
+        // Load
         builder.AddInstruction("set_element");
     }
 
@@ -415,11 +443,31 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         exprResultType = ((Array)expr.Variable.Type).ElementType;
     }
 
+    public void Accept(LoadStructFieldExpression expr) {
+        if (expr.Variable == null)
+            throw new ArgumentException("Cannot dereference field from null variable.");
+
+        checkBreakpoint(expr);
+        // Pointer on stack
+        new LoadVarExpression(expr.Variable).Visit(this);
+
+        // Offset on stack
+        var field = ((StructuredType)expr.Variable.Type).Fields.Where(field => field.Name == expr.FieldName).FirstOrDefault();
+        if (field == null)  
+            throw new ArgumentException($"Field '{expr.FieldName}' doesn't exist.");
+        var index = ((StructuredType)expr.Variable.Type).IndexOf(field);
+        builder.PushInt32(index);
+
+        // Load
+        builder.AddInstruction("get_element");
+        exprResultType = field.Type;
+    }
+
     public void Accept(LoadEnumConstant expr) {
         builder.PushInt32(expr.Constant.Value);
     }
 
-    private int sizeOf(ValueTypeSpecifier type) => 4; // Each element is size 4 in the bytecode
+    private int sizeOf(TypeSpecifier type) => 4; // Each element is size 4 in the bytecode
 
     public void Accept(NewArrayExpression expr) {
         // Put size on the stack
@@ -427,6 +475,14 @@ class BytecodeBuilder : IDeclarationVisitor, IStatementVisitor, IExpressionVisit
         expr.Size.Visit(this);
         builder.PushInt32(sizeOf(expr.Type.ElementType)); 
         builder.MultiplyInt32(); // Size(bytes) = Size(elements) * Size(element_type)
+        // Allocate
+        builder.Allocate();
+    }
+
+    public void Accept(NewStructExpression expr) {
+        checkBreakpoint(expr);
+        // Put size on stack
+        builder.PushInt32(expr.Type.Fields.Select(f => sizeOf(f.Type)).Sum());
         // Allocate
         builder.Allocate();
     }

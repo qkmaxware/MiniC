@@ -64,6 +64,10 @@ public class AssignmentOperator : Token {
     public AssignmentOperator(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
 }
 
+public class ArrowOperator : Token {
+    public ArrowOperator(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
+}
+
 
 public class Semicolon : Token {
     public Semicolon(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}

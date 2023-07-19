@@ -27,7 +27,8 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
 
     public void Accept(StaticVariableDeclaration decl) { }
 
-    public void Accept(EnumDeclaration decl) {}
+    public void Accept(EnumDeclaration decl) { }
+    public void Accept(StructDeclaration decl) {}
 
     public void Accept(FunctionDeclaration decl) {
         decl.Body.Visit(this);
@@ -47,6 +48,18 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
     }
 
     public void Accept(ArrayAssignmentStatement stmt) {
+        stmt.Value.Visit(this);
+    }
+    public void Accept(StructFieldAssignmentStatement stmt) {
+        var structType = stmt.Variable.Type;
+        if (structType is not StructuredType) {
+            ThrowSemanticError(stmt, $"Cannot dereference a field from something of type '{structType}'.");
+        }
+        var field = ((StructuredType)structType).Fields.Where(field => field.Name == stmt.FieldName).FirstOrDefault();
+        if (field == null) {
+            ThrowSemanticError(stmt, $"Structured type '{structType}' doesn't have a field named '{stmt.FieldName}'.");
+        }
+        
         stmt.Value.Visit(this);
     }
 
@@ -94,11 +107,26 @@ public class AnalyzeExpressionTypes : IDeclarationVisitor, IValidationPass, ISta
     public void Accept(LoadEnumConstant expr) {
         type = expr.Type;
     }
+    public void Accept(LoadStructFieldExpression expr) {
+        var structType = expr.Variable.Type;
+        if (structType is not StructuredType) {
+            ThrowSemanticError(expr, $"Cannot dereference a field from something of type '{structType}'.");
+        }
+        var field = ((StructuredType)structType).Fields.Where(field => field.Name == expr.FieldName).FirstOrDefault();
+        if (field == null) {
+            ThrowSemanticError(expr, $"Structured type '{structType}' doesn't have a field named '{expr.FieldName}'.");
+        } else {
+            type = field.Type;
+        }
+    }
     public void Accept(NewArrayExpression expr) {
         expr.Size.Visit(this);
         if (!type.Equals(Integer.Instance) && !type.Equals(UnsignedInteger.Instance)) {
             ThrowSemanticError(expr.Size, $"Type of array size must evaluate to an integer and cannot be of type '{type}'.");
         }
+        type = expr.Type;
+    }
+    public void Accept(NewStructExpression expr) {
         type = expr.Type;
     }
     public void Accept(LiteralIntExpression expr) => type = Integer.Instance;

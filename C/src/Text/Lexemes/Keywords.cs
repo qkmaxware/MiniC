@@ -75,3 +75,6 @@ public class TypedefKeyword : Token {
 public class EnumKeyword : Token {
     public EnumKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
 }
+public class StructKeyword : Token {
+    public StructKeyword(File source, Position startsAt, Position endsAt) : base(source, startsAt, endsAt) {}
+}

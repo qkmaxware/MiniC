@@ -271,7 +271,48 @@ int main() {
    	free(intro);
     free(i);
     return 0;
-}"}
+}"}, {"User Defined Structs", 
+@"#include <console.h>
+
+typedef struct {
+    char[] Name;
+    int Age;
+} Person;
+
+struct Person new_person(char[] name, int age) {
+    struct Person person = new struct Person;
+    person->Name = name;
+    person->Age = age;
+    return person;
+}
+
+void free_person(struct Person person) {
+    char[] name = person->Name;
+    free(name);
+    free(person);
+}
+
+void greet(struct Person greeter, struct Person greetee) {
+    char[] hello = ""Hello "";
+    char[] myname = "", my name is "";
+    print_str(hello);
+    print_str(greetee->Name);
+    print_str(myname);
+    print_str(greeter->Name);
+    free(myname);
+    free(hello);
+}
+
+void main() {
+    struct Person john = new_person(""John Smith"", 24);
+    struct Person jane = new_person(""Jane Doe"", 22);
+    
+    greet(jane, john);
+    
+    free_person(john);
+    free_person(jane);
+}
+"}
     };
     private bool showLoad;
     private List<string>? saves;
@@ -438,7 +479,7 @@ int main() {
                         stdin: new StringReader(this.stdinText ?? string.Empty),
                         stdout: new StringWriter(sb)
                     );
-                    debugger.Debug(host, module.Item1, module.Item2.Values.ToList());
+                    debugger.Debug(this.stdinText, module.Item1, module.Item2.Values.ToList());
                     openDebugger();
                 }
             } else {

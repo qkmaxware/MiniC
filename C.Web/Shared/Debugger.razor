@@ -1,5 +1,6 @@
 @using System.Linq;
 @using Qkmaxware.Vm;
+@using System.Text;
 
 <div class="row">
 <nav id="stack">
@@ -33,12 +34,11 @@
 </nav>
 <div id=article>
     <h3>Next Instruction</h3>
+    <div class="section">
     @if (currentThread != null) {
         var next = getNextInstruction();
         if(next != null) {
-            <h4>0x@(next.Instruction.Opcode.ToString("X")) @next.Instruction.Name</h4>
-            <h5>Position</h5>  
-            <span>- 0x@(currentThread.PC.ToString("X")) (@currentThread.PC.ToString())</span>
+            <h4>0x@(currentThread.PC.ToString("X")) - @next.Instruction.Name</h4>
             <h5>Arguments</h5>
             <table>
                 <thead>
@@ -64,10 +64,32 @@
             </table>
         }
     }
+    </div>
+    <h3>IO</h3>
+    <div class="section">
+        <h4>Input</h4>
+        <p>@stdin</p>
+        <h4>Output</h4>
+        <p>@stdout.ToString()</p>
+    </div>
     <h3>Heap</h3>
-    @if (currentThread != null) {
-        
+    <div class="section heap">
+    @if (currentThread != null && currentThread.Environment.Heap != null) {
+        foreach (var block in new HeapBlockIterator(currentThread.Environment.Heap)) {
+            <div class="heap-block">
+                <header class="@(block.IsFree ? "free" : "allocated")">@if(block.IsFree){<span>Free</span>} else {<span>Used</span>} 0x@(block.Address.ToString("X")) <small>@(block.Size.ByteCount + currentThread.Environment.Heap.BlockHeaderSize.ByteCount)bytes = @(currentThread.Environment.Heap.BlockHeaderSize.ByteCount)header + @(block.Size.ByteCount)data</small></header>
+                <div class="bytes">
+                    @if (!block.IsFree) {
+                        @for (var i = 0; i < block.Size.ByteCount; i+=4) {
+                            var b = currentThread.Environment.Heap.ReadWord32(block.Address + i);
+                            <span>@b.ToString("X8") <small>(@((char)b))</small></span>
+                        }
+                    }
+                </div>
+            </div>
+        }
     }
+    </div>
 </div>
 </div>
 
@@ -84,8 +106,16 @@
     private ThreadOfExecution? currentThread;
     private List<long> breakpoints = new List<long>();
 
-    public void Debug(HostInterface host, Module module, List<long> breakpoints) {
-        vm = new Machine(host);
+    private string? stdin;
+    private StringBuilder stdout = new StringBuilder();
+
+    public void Debug(string? stdin_text, Module module, List<long> breakpoints) {
+        stdout.Clear();
+        this.stdin = stdin_text;
+        vm = new Machine(new HostInterface(
+            stdin: new StringReader(stdin_text ?? string.Empty),
+            stdout: new StringWriter(stdout)
+        ));
         this.currentModule = module;
         this.currentThread = vm.LoadProgram(module);
         foreach (var @break in breakpoints) {

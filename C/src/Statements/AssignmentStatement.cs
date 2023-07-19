@@ -50,3 +50,31 @@ public class ArrayAssignmentStatement : Statement {
 
     public override void Visit(IStatementVisitor visitor) => visitor.Accept(this);
 }
+
+/// <summary>
+/// Statement for local assignment of array elements
+/// </summary>
+public class StructFieldAssignmentStatement : Statement {
+    /// <summary>
+    /// Variable to assign to
+    /// </summary>
+    public IVariableDeclaration Variable {get; private set;}
+
+    /// <summary>
+    /// The value to use as an array index
+    /// </summary>
+    public String FieldName {get; private set;}
+
+    /// <summary>
+    /// Value to assign to the variable
+    /// </summary>
+    public Expression Value {get; private set;}
+
+    public StructFieldAssignmentStatement(IVariableDeclaration decl, string field, Expression value) {
+        this.Variable = decl;
+        this.FieldName = field;
+        this.Value = value;
+    }
+
+    public override void Visit(IStatementVisitor visitor) => visitor.Accept(this);
+}

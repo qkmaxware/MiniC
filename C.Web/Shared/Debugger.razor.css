@@ -44,3 +44,27 @@ td {
     padding: 12px;
     word-wrap: pre-wrap;
 }
+
+.section {
+    margin-left: 32px;
+}
+
+.heap span {
+    margin-right: 1em;
+    display: inline-block;
+}
+
+.heap-block {
+    margin-bottom: 1em;
+    border: 1px solid grey;
+    border-radius: 6px;
+}
+
+.heap-block header.free {
+    padding: 4px 6px;
+    background-color: green;
+}
+.heap-block header.allocated {
+    padding: 4px 6px;
+    background-color: grey;
+}

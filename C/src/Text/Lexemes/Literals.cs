@@ -89,6 +89,7 @@ public class KeywordOrIdentifierLexeme : Lexeme {
 
                 "typedef" => new TypedefKeyword(source, before, after),
                 "enum" => new EnumKeyword(source, before, after),
+                "struct" => new StructKeyword(source, before, after),
 
                 _ => new Identifier(source, before, after, text)
             };

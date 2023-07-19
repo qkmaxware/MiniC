@@ -4,9 +4,9 @@ namespace Qkmaxware.Languages.C;
 /// Array length expression
 /// </summary>
 public class LengthExpression : Expression {
-    public LoadVarExpression Loader {get; private set;}
-    public LengthExpression(IVariableDeclaration var) : base() {
-        this.Loader = new LoadVarExpression(var);
+    public Expression Loader {get; private set;}
+    public LengthExpression(Expression var) : base() {
+        this.Loader = var;
     }
 
     public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);
@@ -16,9 +16,9 @@ public class LengthExpression : Expression {
 /// Heap size expression
 /// </summary>
 public class SizeOfExpression : Expression {
-    public LoadVarExpression Loader {get; private set;}
-    public SizeOfExpression(IVariableDeclaration var) : base() {
-        this.Loader = new LoadVarExpression(var);
+    public Expression Loader {get; private set;}
+    public SizeOfExpression(Expression var) : base() {
+        this.Loader = var;
     }
 
     public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);

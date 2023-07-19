@@ -5,7 +5,9 @@ public class ValidateLoopControlFlow : BaseValidationPass, IDeclarationVisitor, 
 
     public void Accept(AssignmentStatement stmt) { }
 
-    public void Accept(ArrayAssignmentStatement stmt) {}
+    public void Accept(ArrayAssignmentStatement stmt) { }
+
+    public void Accept(StructFieldAssignmentStatement stmt) { }
 
     public void Accept(CompoundStatement stmt) {
         foreach (var s in stmt)
@@ -45,7 +47,9 @@ public class ValidateLoopControlFlow : BaseValidationPass, IDeclarationVisitor, 
 
     public void Accept(StaticVariableDeclaration decl) { }
 
-    public void Accept(EnumDeclaration decl) {}
+    public void Accept(EnumDeclaration decl) { }
+
+    public void Accept(StructDeclaration decl) { }
 
     private FunctionDeclaration? currentFunction;
     public void Accept(FunctionDeclaration decl) {

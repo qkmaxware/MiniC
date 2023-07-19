@@ -28,6 +28,24 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
         }
     }
 
+    public void Accept(StructFieldAssignmentStatement stmt) {
+        var structType = stmt.Variable.Type;
+        if (structType is not StructuredType) {
+            ThrowSemanticError(stmt, $"Cannot dereference a field from something of type '{structType}'.");
+        }
+        var field = ((StructuredType)structType).Fields.Where(field => field.Name == stmt.FieldName).FirstOrDefault();
+        if (field == null) {
+            ThrowSemanticError(stmt, $"Structured type '{structType}' doesn't have a field named '{stmt.FieldName}'.");
+        } else {
+
+            var field_type = field.Type;
+            var value_type = new AnalyzeExpressionTypes().EvaluateType(stmt.Value); 
+            if (!value_type.Equals(field_type)) {
+            ThrowSemanticError(stmt.Value, $"Type mismatch, cannot assign values of type '{value_type}' to a '{field_type}' field.");
+        }
+        }
+    }
+
     public void Accept(CompoundStatement stmt) {
         foreach (var s in stmt)
             s.Visit(this);
@@ -69,12 +87,23 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
     public void Accept(LoadArrayElementExpression expr){
         expr.Index.Visit(this);
     }
+    public void Accept(LoadStructFieldExpression expr) {
+        var structType = expr.Variable.Type;
+        if (structType is not StructuredType) {
+            ThrowSemanticError(expr, $"Cannot dereference a field from something of type '{structType}'.");
+        }
+        var field = ((StructuredType)structType).Fields.Where(field => field.Name == expr.FieldName).FirstOrDefault();
+        if (field == null) {
+            ThrowSemanticError(expr, $"Structured type '{structType}' doesn't have a field named '{expr.FieldName}'.");
+        }
+    }
 
     public void Accept(LoadEnumConstant expr) { }
 
     public void Accept(NewArrayExpression expr) {
         expr.Size.Visit(this);
     }
+    public void Accept(NewStructExpression expr) { }
 
     public void Accept(LiteralIntExpression expr) {}
 
@@ -150,13 +179,25 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
 
     public void Accept(LengthExpression expr) {
         expr.Loader.Visit(this);
+
+        var loaded_type = new AnalyzeExpressionTypes().EvaluateType(expr.Loader); 
+        if (loaded_type is not Array) {
+            ThrowSemanticError(expr.Loader, "Cannot compute the length values non-array types.");
+        }
     }
 
     public void Accept(SizeOfExpression expr) {
         expr.Loader.Visit(this);
+
+        var loaded_type = new AnalyzeExpressionTypes().EvaluateType(expr.Loader); 
+        if (loaded_type is not Array) {
+            ThrowSemanticError(expr.Loader, "Cannot compute the size of types which are not allocated to the heap.");
+        }
     }
 
     public void Accept(FreeExpression expr) {
+        expr.Loader.Visit(this);
+        
         var loaded_type = new AnalyzeExpressionTypes().EvaluateType(expr.Loader); 
         if (loaded_type is not IPointerType) {
             ThrowSemanticError(expr.Loader, "Cannot free values of types which are not allocated to the heap.");
@@ -168,6 +209,7 @@ public class ValidateTypes : BaseValidationPass, IDeclarationVisitor, IStatement
     public void Accept(StaticVariableDeclaration decl) { }
 
     public void Accept(EnumDeclaration decl) { } 
+    public void Accept(StructDeclaration decl) { } 
 
     private FunctionDeclaration? currentFunction;
     public void Accept(FunctionDeclaration decl) {

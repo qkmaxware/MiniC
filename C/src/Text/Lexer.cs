@@ -13,6 +13,7 @@ public class Lexer {
 
         new TwoCharLexeme('=', '=', (source, startsAt, endsAt) => new EqualityOperator(source, startsAt, endsAt)),
         new TwoCharLexeme('!', '=', (source, startsAt, endsAt) => new InequalityOperator(source, startsAt, endsAt)),
+        new TwoCharLexeme('-', '>', (source, startsAt, endsAt) => new ArrowOperator(source, startsAt, endsAt)),
         new SingleCharLexeme('=', (source, startsAt, endsAt) => new AssignmentOperator(source, startsAt, endsAt)),
         new SingleCharLexeme('!', (source, startsAt, endsAt) => new NotOperator(source, startsAt, endsAt)),
 

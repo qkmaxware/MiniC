@@ -118,6 +118,7 @@ public class Parser {
         // Parse the result
         var result = kind switch {
             EnumKeyword => parseEnumDecl(unit, stream),
+            StructKeyword => parseStructDecl(unit, stream),
             _ => throw new ParserException(kind.Source, kind.StartPosition, $"Unknown type container '{kind}'."),
         };
 
@@ -191,6 +192,52 @@ public class Parser {
         return new EnumDeclaration(type);
     }
 
+    private GlobalDeclaration parseStructDecl(TranslationUnit unit, TokenStream stream) {
+        // struct
+        Token? peek = stream.Peek(0);
+        if (peek == null)
+            throw new EndOfStreamException();
+        if (peek is not StructKeyword)  {
+            throw new ParserException(peek.Source, peek.StartPosition, "Structure declarations must begin with the 'struct' keyword.");
+        }
+        stream.Advance();
+        
+        // {
+        openBrace(stream);
+        
+        // Fields
+        List<(string, TypeSpecifier)> fields = new ();
+        Token? next;
+        while ((next = stream.Peek(0)) != null && next is not CloseBrace) {
+            // type
+            var ftype = parseTypeSpec(unit, stream);
+            
+            // name
+            var fname = parseIdentifier(stream);
+            
+            // ;
+            semicolon(stream);
+            
+            fields.Add((fname.Text, ftype));
+        }
+        
+        // }
+        closeBrace(stream);
+        
+        // Identifier
+        var name = parseIdentifier(stream);
+        assertNotDefined(unit.Namespace, name);
+        var uname = new Name(unit.Namespace, name.Text);
+        
+        // Create type
+        var type = new StructuredType(uname);
+        foreach (var field in fields) {
+            type.MakeField(field.Item1, field.Item2);
+        }
+        return new StructDeclaration(type);
+    }
+
+
     private Identifier parseIdentifier(TokenStream stream) {
         var peek = stream.Peek(0);
         if (peek == null)
@@ -250,14 +297,23 @@ public class Parser {
                 stream.Advance();
                 return Void.Instance;
             case EnumKeyword e: {
-                    stream.Advance();
-                    var ident = parseIdentifier(stream);
-                    var type = unit.EnumerationTypes.Where(x => x.Name.Value == ident.Text).FirstOrDefault();
-                    if (type == null) {
-                        throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is not an enumeration type.");
-                    }
-                    return type.Type;
+                stream.Advance();
+                var ident = parseIdentifier(stream);
+                var type = unit.EnumerationTypes.Where(x => x.Name.Value == ident.Text).FirstOrDefault();
+                if (type == null) {
+                    throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is not an enumeration type.");
                 }
+                return type.Type;
+            }
+            case StructKeyword s: {
+                stream.Advance();
+                var ident = parseIdentifier(stream);
+                var type = unit.StructuredTypes.Where(x => x.Name.Value == ident.Text).FirstOrDefault();
+                if (type == null) {
+                    throw new ParserException(ident.Source, ident.StartPosition, $"Identifier '{ident.Text}' is not an structured type.");
+                }
+                return type.Type;
+            }
             default:
                 throw new ParserException(peek.Source, peek.StartPosition, "Missing type specification");
         }   
@@ -321,6 +377,7 @@ public class Parser {
             case CharKeyword c:
             case VoidKeyword v:
             case EnumKeyword e:
+            case StructKeyword s:
                 // All valid types go here ^^ the same as in parseSimpleTypeSpec
                 var localAssignment = parseLocalDecl(unit, func, stream);
                 return localAssignment;
@@ -496,10 +553,12 @@ public class Parser {
             args.Add(parseExpression(unit, func, stream));
             
             next = stream.Peek(0);
-            if (next != null && next is Comma)
+            if (next != null && next is Comma) {
+                stream.Advance();
                 continue;
-            else 
+            } else {
                 break;
+            }
         }
 
         // )    
@@ -567,7 +626,28 @@ public class Parser {
             var ag = new ArrayAssignmentStatement(local, index, value);
             ag.Tag<File>(peek.Source); ag.Tag<Position>(peek.StartPosition);
             return ag;
-        } else {
+        } 
+        else if (next is ArrowOperator) {
+            // ident->ident = value
+            stream.Advance();
+
+            var fieldName = parseIdentifier(stream);
+
+            next = stream.Peek(0);
+            if (next == null)
+                throw new EndOfStreamException();
+            if (next is not AssignmentOperator)
+                throw new ParserException(next.Source, next.StartPosition, "Missing assignment operator.");
+            stream.Advance();
+
+            var value = parseExpression(unit, func, stream);
+            var local = getVar(unit, func, ident);
+
+            var ag = new StructFieldAssignmentStatement(local, fieldName.Text, value);
+            ag.Tag<File>(peek.Source); ag.Tag<Position>(peek.StartPosition);
+            return ag;
+        }
+        else {
             // Error
             throw new ParserException(next.Source, next.StartPosition, "Assignments must be of the form 'name = value' or 'name[index] = value'");
         }
@@ -903,7 +983,7 @@ public class Parser {
                     stream.Advance();   
 
                     // IDENT
-                    var ident = parseIdentifier(stream);
+                    var expr = parseExpression(unit, func, stream);
 
                     // )
                     next = stream.Peek(0);
@@ -913,7 +993,7 @@ public class Parser {
                         throw new ParserException(next.Source, next.StartPosition, "Length expression must end in a parenthesis.");
                     stream.Advance();
 
-                    var e = new LengthExpression(getVar(unit, func, ident));
+                    var e = new LengthExpression(expr);
                     e.Tag<File>(len.Source); e.Tag<Position>(len.StartPosition);
                     return e;
                 }
@@ -929,7 +1009,7 @@ public class Parser {
                     stream.Advance();   
 
                     // IDENT
-                    var ident = parseIdentifier(stream);
+                    var expr = parseExpression(unit, func, stream);
 
                     // )
                     next = stream.Peek(0);
@@ -939,11 +1019,11 @@ public class Parser {
                         throw new ParserException(next.Source, next.StartPosition, "Length expression must end in a parenthesis.");
                     stream.Advance();
 
-                    var e = new SizeOfExpression(getVar(unit, func, ident));
+                    var e = new SizeOfExpression(expr);
                     e.Tag<File>(size.Source); e.Tag<Position>(size.StartPosition);
                     return e;
                 }
-            case Identifier id:
+            case Identifier id: {
                 // One of many different possible things
                 next = stream.Peek(1);
                 if (next == null) {
@@ -966,13 +1046,27 @@ public class Parser {
                     var e = new LoadArrayElementExpression(getVar(unit, func, id), index);
                     e.Tag<File>(id.Source); e.Tag<Position>(id.StartPosition);
                     return e;
-                } else if (next is OpenParenthesis) {
+                }
+                else if (next is ArrowOperator) {
+                    // Structure dereference
+                    stream.Advance(); // id
+                    stream.Advance(); // ->
+                    var fieldName = parseIdentifier(stream);
+
+                    var ptr = getVar(unit, func, id);
+                    
+                    var e = new LoadStructFieldExpression(ptr, fieldName.Text);
+                    e.Tag<File>(id.Source); e.Tag<Position>(id.StartPosition);
+                    return e;
+                } 
+                else if (next is OpenParenthesis) {
                     // Function call
                     return parseFunctionCall(unit, func, stream);
                 } else {
                     // Simple identifier - can also be an enum constant, how do we determine this?
                     return parseSimpleIdentifierExpr(unit, func, stream, id);
                 }
+            }
             case BooleanLiteralToken b: {
                 stream.Advance();
                 var e = new LiteralIntExpression(b.Value ? 1 : 0);
@@ -1013,23 +1107,30 @@ public class Parser {
                 var openNew = stream.Peek(0);
                 if (openNew == null)
                     throw new EndOfStreamException();
-                if (openNew is not OpenBracket) 
-                    throw new ParserException(openNew.Source, openNew.StartPosition, "Missing opening [ on array size definition.");
-                stream.Advance();
+                
+                if (openNew is OpenBracket) {
+                    stream.Advance();
 
-                var elementCount = parseExpression(unit, func, stream); 
+                    var elementCount = parseExpression(unit, func, stream); 
 
-                // ]
-                var closeNew = stream.Peek(0);
-                if (closeNew == null)
-                    throw new EndOfStreamException();
-                if (closeNew is not CloseBracket) 
-                    throw new ParserException(closeNew.Source, closeNew.StartPosition, "Missing closing ] on array size definition.");
-                stream.Advance();
+                    // ]
+                    var closeNew = stream.Peek(0);
+                    if (closeNew == null)
+                        throw new EndOfStreamException();
+                    if (closeNew is not CloseBracket) 
+                        throw new ParserException(closeNew.Source, closeNew.StartPosition, "Missing closing ] on array size definition.");
+                    stream.Advance();
 
-                var e = new NewArrayExpression(elementType, elementCount);
-                e.Tag<File>(n.Source); e.Tag<Position>(n.StartPosition);
-                return e;
+                    var e = new NewArrayExpression(elementType, elementCount);
+                    e.Tag<File>(n.Source); e.Tag<Position>(n.StartPosition);
+                    return e;
+                } else if (simpleType is StructuredType struct_type) {
+                    var e = new NewStructExpression(struct_type);
+                    e.Tag<File>(n.Source); e.Tag<Position>(n.StartPosition);
+                    return e;
+                } else {
+                    throw new ParserException(openNew.Source, openNew.StartPosition, "Expected heap type such as a struct or an array.");
+                }
             }
             default:
                 //throw new ParserException(next.Source, next.StartPosition, "Expected one of IDENTIFIER, BOOLEAN, INTEGER, UNSIGNED INTEGER, FLOAT, or INSTANTIATION.");

@@ -12,3 +12,13 @@ public class NewArrayExpression : Expression {
 
     public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);
 }
+
+public class NewStructExpression : Expression {
+    public StructuredType Type {get; set;}
+
+    public NewStructExpression(StructuredType type) {
+        this.Type = type;
+    }
+
+    public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);
+}

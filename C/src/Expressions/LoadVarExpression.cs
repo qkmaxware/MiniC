@@ -33,3 +33,15 @@ public class LoadArrayElementExpression : Expression {
 
     public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);
 }
+
+public class LoadStructFieldExpression : Expression {
+    public IVariableDeclaration Variable {get; private set;}
+    public string FieldName {get; private set;}
+
+    public LoadStructFieldExpression(IVariableDeclaration @var, string fieldname) {
+        this.Variable = @var;
+        this.FieldName = fieldname;
+    }
+
+    public override void Visit(IExpressionVisitor visitor) => visitor.Accept(this);
+}

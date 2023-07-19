@@ -17,6 +17,7 @@ public class TranslationUnit : IEnumerable<GlobalDeclaration> {
     public IEnumerable<StaticVariableDeclaration> GlobalVariables => declarations.OfType<StaticVariableDeclaration>();
     public IEnumerable<FunctionDeclaration> Functions => declarations.OfType<FunctionDeclaration>();
     public IEnumerable<EnumDeclaration> EnumerationTypes => declarations.OfType<EnumDeclaration>();
+    public IEnumerable<StructDeclaration> StructuredTypes => declarations.OfType<StructDeclaration>();
 
     private int static_pool_count = 0;
 

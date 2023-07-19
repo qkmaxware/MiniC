@@ -5,4 +5,5 @@ public interface IDeclarationVisitor {
     public void Accept(StaticVariableDeclaration decl);
     public void Accept(FunctionDeclaration decl);
     public void Accept(EnumDeclaration decl);
+    public void Accept(StructDeclaration decl);
 }
